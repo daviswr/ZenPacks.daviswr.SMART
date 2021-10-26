@@ -134,7 +134,7 @@ class SMART(CommandPlugin):
                     if model:
                         if ' ' in model:
                             vendor, model = model.split(' ', 1)
-                            vendor = vendor_dict.get(vendor, vendor)
+                            vendor = vendor_dict.get(vendor, vendor.title())
                         else:
                             vendor = vendor_dict.get(model[0:2], 'Unknown')
                         om.setProductKey = MultiArgs(model, vendor)
