@@ -43,6 +43,11 @@ class SMART(CommandPlugin):
     def process(self, device, results, log):
         """ Generates RelationshipMaps from Command output """
 
+        SMART_UNKNOWN = -1
+        SMART_ENABLED = 0
+        SMART_DISABLED = 1
+        SMART_UNSUPPORTED = 2
+
         log.info(
             'Modeler %s processing data for device %s',
             self.name(),
@@ -54,6 +59,15 @@ class SMART(CommandPlugin):
             log.debug('%s: zSmartDiskMapMatch set to %s', device.id, match_re)
         else:
             log.debug('%s: zSmartDiskMapMatch not set', device.id)
+
+        skip_unsupported = getattr(device, 'zSmartSkipUnsupported', True)
+        if skip_unsupported:
+            log.debug('%s: zSmartSkipUnsupported enabled', device.id)
+        else:
+            log.debug('%s: zSmartSkipUnsupported disabled', device.id)
+
+        # Example:     512 bytes logical, 4096 bytes physical
+        sector_re = r'(\d+) bytes logical, (\d+) bytes physical'
 
         # *Not* exhaustive...
         vendor_dict = {
@@ -97,6 +111,11 @@ class SMART(CommandPlugin):
         Power mode is:    ACTIVE or IDLE
 
         --------
+        Device Path: /dev/disk5
+        smartctl 7.2 2020-12-30 r5155 [Darwin 19.6.0 x86_64] (local build)
+        Copyright (C) 2002-20, Bruce Allen, Christian Franke, www.smartmontools.org  # noqa
+
+        Smartctl open device: /dev/disk5 failed: Operation not supported by device  # noqa
         """
 
         devices = results.split('--------')
@@ -113,10 +132,30 @@ class SMART(CommandPlugin):
                     value = value_raw.strip()
                     if 'bytes' in value:
                         value = int(value.split(' ')[0].replace(',', ''))
-                    if 'Sector Sizes' == key_raw:
-                        key = 'SectorSize'
+                    if 'Sector Size' in key_raw:
+                        match = re.search(sector_re, value_raw)
+                        if match:
+                            log_sect, phys_sect = match.groups()
+                            dev_map['LogicalSector'] = int(log_sect)
+                            dev_map['PhysicalSector'] = int(phys_sect)
+                        else:
+                            dev_map['LogicalSector'] = value
+                            dev_map['PhysicalSector'] = value
                     elif 'SMART support' == key_raw:
-                        value = True if 'Enabled' in value else False
+                        value = (SMART_ENABLED if 'Enabled' in value
+                                 else SMART_DISABLED)
+                    elif (dev_map.get('SmartSupport', SMART_UNKNOWN) != SMART_ENABLED  # noqa
+                            and 'Smartctl open device' in key_raw
+                            and 'Operation not supported' in value_raw):
+                        dev_map['SmartSupport'] = SMART_UNSUPPORTED
+                        msg = '{0} does not support SMART'.format(
+                            dev_map.get('DevicePath', 'Storage device')
+                            )
+                        if skip_unsupported:
+                            # This will prevent it from being added to RelMap
+                            del dev_map['DevicePath']
+                            msg += ', skipping'
+                        log.warning(msg)
                     dev_map[key] = value
 
             if 'DevicePath' in dev_map:

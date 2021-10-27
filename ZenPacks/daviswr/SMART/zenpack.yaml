@@ -42,35 +42,47 @@ classes:
         order: 14
         label_width: 55
         content_width: 55
-      SectorSize:
+      LogicalSector:
         type: int
-        label: Sector Size
-        short_label: Sector
+        label: Logical Sector Size
+        short_label: Log. Sector
         renderer: Zenoss.render.bytesString
         order: 22
+      PhysicalSector:
+        type: int
+        label: Physical Sector Size
+        short_label: Phys. Sector
+        renderer: Zenoss.render.bytesString
+        order: 23
       RotationRate:
         label: Rotation Rate
         short_label: Rotation
-        order: 23
+        order: 24
       FormFactor:
         label: Form Factor
         grid_display: true
-        order: 24
+        order: 25
       AtaVersion:
         label: ATA Version
         short_label: ATA
-        order: 25
+        order: 26
       SataVersion:
         label: SATA Version
         short_label: SATA
-        order: 26
+        order: 27
+      TransportType:
+        label: Transport Type
+        short_label: Transport
+        default: "N/A"
+        order: 28
       SmartSupport:
-        type: boolean
+        type: int
         label: SMART Support
         short_label: SMART
         enum:
-          true: "clear"
-          false: "critical"
+          0: "clear"
+          1: "critical"
+          2: "debug"
         renderer: Zenoss.render.severity
         grid_display: true
         details_display: false
@@ -88,3 +100,13 @@ classes:
       # WtCacheReorder:
       #   label: Write Cache Reorder
       #   short_label: Reorder
+
+
+zProperties:
+  DEFAULTS:
+    category: SMART
+  zSmartDiskMapMatch:
+    type: string
+  zSmartSkipUnsupported:
+    type: boolean
+    default: true
