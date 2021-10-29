@@ -6,6 +6,12 @@ import re
 from Products.DataCollector.plugins.CollectorPlugin import CommandPlugin
 from Products.DataCollector.plugins.DataMaps import MultiArgs, ObjectMap
 
+from ZenPacks.daviswr.SMART.lib.util import (
+    SMART_DISABLED,
+    SMART_ENABLED,
+    vendor_dict
+    )
+
 
 class SMART(CommandPlugin):
     """ Models SMART-supporting storage devices via SSH """
@@ -17,36 +23,39 @@ class SMART(CommandPlugin):
     # IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/SATA@1F,2/
     # AppleAHCI/PRT2@2/IOAHCIDevice@0/AppleAHCIDiskDriver/
     # IOAHCIBlockStorageDevice
-    command_raw = """$ZENOTHING;
+    command_raw = r"""$ZENOTHING;
         smart_path=$(whereis smartctl | cut -d' ' -f2);
-        smart_opts="--nocheck=standby";
+        if [[ $smart_path != *smartctl ]];
+        then
+            smart_path=$(command -v smartctl);
+        fi;
+        smart_opts="--badsum=ignore --nocheck=standby";
         if [[ $(uname -s) == "Darwin" ]];
         then
             scan_cmd="/usr/sbin/diskutil list | grep physical | cut -d' ' -f1";
         else
             scan_cmd="$smart_path --scan $smart_opts | cut -d' ' -f1";
         fi;
-        info_cmd="$smart_path --info $smart_opts";
+        health_cmd="$smart_path --health $smart_opts";
         for device in $(eval $scan_cmd);
         do
-            echo "Device Path: $device";
-            eval $info_cmd $device;
-            ret_val=$?;
-            if [ $ret_val -eq 2 ];
+            info_cmd="$smart_path --info --get=all --capabilities $smart_opts";
+            permission=$(eval $health_cmd $device | tail -1);
+            if [[ $permission == *Permission\ denied ]];
             then
-                eval sudo $info_cmd $device;
+                info_cmd="sudo $info_cmd";
             fi;
-            echo "--------";
+            if [[ $permission != *Operation\ not\ supported\ by\ device ]];
+            then
+                echo "Device Path: $device";
+                eval $info_cmd $device;
+                echo "--------";
+            fi;
         done"""
     command = ' '.join(command_raw.replace('    ', '').splitlines())
 
     def process(self, device, results, log):
         """ Generates RelationshipMaps from Command output """
-
-        SMART_UNKNOWN = -1
-        SMART_ENABLED = 0
-        SMART_DISABLED = 1
-        SMART_UNSUPPORTED = 2
 
         log.info(
             'Modeler %s processing data for device %s',
@@ -60,25 +69,8 @@ class SMART(CommandPlugin):
         else:
             log.debug('%s: zSmartDiskMapMatch not set', device.id)
 
-        skip_unsupported = getattr(device, 'zSmartSkipUnsupported', True)
-        if skip_unsupported:
-            log.debug('%s: zSmartSkipUnsupported enabled', device.id)
-        else:
-            log.debug('%s: zSmartSkipUnsupported disabled', device.id)
-
         # Example:     512 bytes logical, 4096 bytes physical
         sector_re = r'(\d+) bytes logical, (\d+) bytes physical'
-
-        # *Not* exhaustive...
-        vendor_dict = {
-            'CT': 'Crucial',
-            'MK': 'Mushkin',
-            'SM': 'Samsung',
-            'TH': 'Toshiba',
-            'WD': 'Western Digital',
-            'WDC': 'Western Digital',
-            'XP': 'Samsung',
-            }
 
         rm = self.relMap()
 
@@ -127,11 +119,17 @@ class SMART(CommandPlugin):
                 if ': ' in line and 'capability' not in line:
                     key_raw, value_raw = line.replace(' is', '').split(':', 1)
                     key = ''
-                    for term in key_raw.split(' '):
+                    for term in key_raw.strip().replace('-', '').split(' '):
                         key += term.title()
                     value = value_raw.strip()
+                    # Various cleanup
+                    if '.' == value[-1]:
+                        value = value[0:-1]
                     if 'bytes' in value:
-                        value = int(value.split(' ')[0].replace(',', ''))
+                        try:
+                            value = int(value.split(' ')[0].replace(',', ''))
+                        except ValueError:
+                            continue
                     if 'Sector Size' in key_raw:
                         match = re.search(sector_re, value_raw)
                         if match:
@@ -144,18 +142,10 @@ class SMART(CommandPlugin):
                     elif 'SMART support' == key_raw:
                         value = (SMART_ENABLED if 'Enabled' in value
                                  else SMART_DISABLED)
-                    elif (dev_map.get('SmartSupport', SMART_UNKNOWN) != SMART_ENABLED  # noqa
-                            and 'Smartctl open device' in key_raw
-                            and 'Operation not supported' in value_raw):
-                        dev_map['SmartSupport'] = SMART_UNSUPPORTED
-                        msg = '{0} does not support SMART'.format(
-                            dev_map.get('DevicePath', 'Storage device')
-                            )
-                        if skip_unsupported:
-                            # This will prevent it from being added to RelMap
-                            del dev_map['DevicePath']
-                            msg += ', skipping'
-                        log.warning(msg)
+                    elif key_raw.startswith('AAM'):
+                        key = 'AamFeature'
+                    elif key_raw.startswith('APM'):
+                        key = 'ApmFeature'
                     dev_map[key] = value
 
             if 'DevicePath' in dev_map:

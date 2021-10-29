@@ -55,6 +55,7 @@ classes:
         renderer: Zenoss.render.bytesString
         order: 23
       RotationRate:
+        # Thankfully reports "Solid State Device" if SSD
         label: Rotation Rate
         short_label: Rotation
         order: 24
@@ -65,10 +66,12 @@ classes:
       AtaVersion:
         label: ATA Version
         short_label: ATA
+        default: "N/A"
         order: 26
       SataVersion:
         label: SATA Version
         short_label: SATA
+        default: "N/A"
         order: 27
       TransportType:
         label: Transport Type
@@ -82,24 +85,41 @@ classes:
         enum:
           0: "clear"
           1: "critical"
-          2: "debug"
         renderer: Zenoss.render.severity
         grid_display: true
         details_display: false
         label_width: 35
         content_width: 35
         order: 13
-      # Below only in --xall output
-      # RdLookAhead:
-      #   label: Read Look-Ahead
-      # WriteCache:
-      #   label: Write Cache
-      # AtaSecurity:
-      #   label: ATA Security
-      #   short_label: Security
-      # WtCacheReorder:
-      #   label: Write Cache Reorder
-      #   short_label: Reorder
+      # Requires --get=all
+      AamFeature:
+        label: Automatic Acoustic Management
+        short_label: AAM
+        default: "N/A"
+        order: 29
+      ApmFeature:
+        label: Advanced Power Management
+        short_label: AAM
+        default: "N/A"
+        order: 30
+      RdLookahead:
+        label: Read Look-Ahead
+        default: "N/A"
+        order: 31
+      WriteCache:
+        label: Write Cache
+        default: "N/A"
+        order: 32
+      AtaSecurity:
+        label: ATA Security
+        short_label: Security
+        default: "N/A"
+        order: 33
+      # Requires --capabilities
+      AutoOfflineDataCollection:
+        label: Auto Offline Data Collection
+        short_label: Offline Collection
+        order: 34
 
 
 zProperties:
@@ -107,6 +127,3 @@ zProperties:
     category: SMART
   zSmartDiskMapMatch:
     type: string
-  zSmartSkipUnsupported:
-    type: boolean
-    default: true
