@@ -1,7 +1,9 @@
 HEALTH_FAILED = 1
 HEALTH_PASSED = 0
+HEALTH_UNKNOWN = 2
 SMART_DISABLED = 1
 SMART_ENABLED = 0
+SMART_UNKNOWN = 2
 
 # https://en.wikipedia.org/wiki/S.M.A.R.T.
 attr_override = {

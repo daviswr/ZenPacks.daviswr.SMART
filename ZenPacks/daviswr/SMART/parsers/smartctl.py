@@ -10,8 +10,10 @@ from Products.ZenUtils.Utils import prepId
 from ZenPacks.daviswr.SMART.lib.util import (
     HEALTH_FAILED,
     HEALTH_PASSED,
+    HEALTH_UNKNOWN,
     SMART_DISABLED,
     SMART_ENABLED,
+    SMART_UNKNOWN,
     attr_override,
     )
 
@@ -28,7 +30,7 @@ class smartctl(CommandParser):
             if ': ' in line and 'capability' not in line:
                 key_raw, value_raw = line.replace(' is', '').split(':', 1)
                 key = ''
-                for term in key_raw.strip().replace('-', '').split(' '):
+                for term in key_raw.strip().replace('-', ' ').split(' '):
                     key += term.title()
                 value = value_raw.strip()
                 if 'bytes' in value or value[0].isdigit():
@@ -45,6 +47,7 @@ class smartctl(CommandParser):
                 info[key] = value
 
         component = info.get('Component', '')
+        hard_disk = isinstance(info.get('RotationRate', ''), int)
 
         ## Attributes
         attrs = dict()
@@ -55,21 +58,23 @@ class smartctl(CommandParser):
         #   5 Reallocated_Sector_Ct   0x0013   100   100   050    Pre-fail  Always       -       0  # noqa
         #  12 Power_Cycle_Count       0x0012   100   100   000    Old_age   Always       -       6860  # noqa
         # 194 Temperature_Celsius     0x0023   077   062   030    Pre-fail  Always       -       23 (Min/Max 10/38)  # noqa
-        attr_re = r'(\d+) (\S+)\s+\w+\s+(\d+)\s+\d+\s+(\d+)\s+(\S+)\s+\w+\s+\S+\s+(\d+)'  # noqa
+        attr_re = r'(\d+) (\S+)\s+0x\w{4}   (\d+)   \d+   (\d+)    (\S+)\s+\w+\s+\S+\s+(\d+)'  # noqa
 
         matches = re.findall(attr_re, cmd.result.output)
         for match in matches:
             attr_id, name, value, threshold, attr_type, raw = match
-            # Bad RegEx match in SCT output
-            if name[0].isdigit():
-                continue
             name = name.replace('_', ' ')
             if name.startswith('Unknown') and name.endswith('Attribute'):
-                name = attr_override.get(name, name)
+                name = attr_override.get(name, '{0} {1}'.format(name, attr_id))
             value = int(value)
             threshold = int(threshold)
             attr_type = attr_type.replace('_', ' ').lower()
             raw = int(raw)  # RegEx should only match the digits
+            # WD drives scale some normalized values to 200
+            if value > 100:
+                scale = value/100 if value >= 200 else 2
+                value = value/scale
+                threshold = value/scale
             attrs[attr_id] = {
                 'name': name,
                 'value': value,
@@ -79,12 +84,12 @@ class smartctl(CommandParser):
                 }
 
             # Health threshold events
-            if value <= threshold:
+            if threshold > 0 and value <= threshold:
                 result.events.append({
                     'device': cmd.deviceConfig.device,
-                    'component': component,
+                    'component': prepId(component),
                     'severity': Event.Error,
-                    'eventKey': name,
+                    'eventKey': name.replace(' ', ''),
                     'eventClass': '/HW/Store',
                     'summary': '{0} {1} health below threshold: {2}%'.format(
                         name,
@@ -95,9 +100,9 @@ class smartctl(CommandParser):
             else:
                 result.events.append({
                     'device': cmd.deviceConfig.device,
-                    'component': component,
+                    'component': prepId(component),
                     'severity': Event.Clear,
-                    'eventKey': name,
+                    'eventKey': name.replace(' ', ''),
                     'eventClass': '/HW/Store',
                     'summary': '{0} {1} health above threshold: {2}%'.format(
                         name,
@@ -108,36 +113,94 @@ class smartctl(CommandParser):
 
         ## Device Stats
         stats = dict()
-        stat_re = r'[\r\n]\S+\s+\S+\s+\d\s+(\d+)\s+\S{3}\s+(\w.*)'
+        # Example:
+        # Page  Offset Size        Value Flags Description
+        # 0x03  0x020  4               0  ---  Number of Reallocated Logical Sectors  # noqa
+        # 0x05  0x008  1              30  ---  Current Temperature
+        # 0x07  0x008  1              30  ---  Percentage Used Endurance Indicator  # noqa
+        stat_re = r'0x\w{2}  0x\w{3}  \d\s+(\d+)  \S{3}  (\w.*)'
         matches = re.findall(stat_re, cmd.result.output)
         for match in matches:
             value, name = match
-            if not name[0].isdigit():
-                stats[name] = int(value)
+            stats[name] = int(value)
 
         ## Phy Events
         phy_events = 0
-        phy_re = r'[\r\n]\S+\s+\d\s+(\d+)\s+(\w.*)'
+        # Example:
+        # ID      Size     Value  Description
+        # 0x0008  2            0  Device-to-host non-data FIS retries
+        # 0x0009  2            3  Transition from drive PhyRdy to drive PhyNRdy
+        # 0x000a  2            4  Device-to-host register FISes sent due to a COMRESET  # noqa
+        phy_re = r'0x\w{4}  \d\s+(\d+)  (\w.*)'
         matches = re.findall(phy_re, cmd.result.output)
         for match in matches:
             value, name = match
-            if name != 'Vendor specific' and not name[0].isdigit():
+            if name != 'Vendor specific':
                 phy_events += int(value)
 
         ## Assemble datapoint values
 
-        # Most attributes will be the normalized "health" values, except these
-        raw_attrs = [
-            '5',    # Reallocated_Sector_Ct
-            '194',  # Temperature_Celsius
-            '197',  # Current_Pending_Sector
-            ]
+        values = dict()
+        values['smart_enabled'] = info.get('SmartSupport', SMART_UNKNOWN)
+        values['health_check'] = info.get(
+            'SmartOverallHealthSelfAssessmentTestResult',
+            HEALTH_UNKNOWN
+            )
+        values['phy_events'] = phy_events
+
+        # Raw attribute values
+
         # Why not Raw_Read_Error_Rate?
         # From https://wiki.unraid.net/Understanding_SMART_Reports -
         # "Only Seagates report the raw value, which yes, does appear to be the
         # number of raw read errors, but should be ignored, completely. All
         # other drives have raw read errors too, but do not report them,
         # leaving this value as zero only."
+
+        # Reallocated Sectors
+        if '5' in attrs:
+            values['reallocated_sectors'] = attrs['5']['raw']
+        elif 'Number of Reallocated Logical Sectors' in stats:
+            value = stats['Number of Reallocated Logical Sectors']
+            values['reallocated_sectors'] = value
+
+        # Temperature
+        if '194' in attrs:
+            values['temperature_celsius'] = attrs['194']['raw']
+        elif 'Current Temperature' in info:
+            values['temperature_celsius'] = info['Current Temperature']
+        elif 'Current Temperature' in stats:
+            values['temperature_celsius'] = stats['Current Temperature']
+        elif hard_disk and '231' in attrs:
+            # Some hard drives may use 231 for Temperature
+            values['temperature_celsius'] = attrs['231']['raw']
+
+        # Pending Sectors
+        if '197' in attrs:
+            values['pending_sectors'] = attrs['197']['raw']
+        elif 'Number of Realloc. Candidate Logical Sectors' in stats:
+            value = stats['Number of Realloc. Candidate Logical Sectors']
+            values['pending_sectors'] = value
+
+        # Normalized values
+        health_attrs = {
+            '1': 'read_error_health',   # Raw_Read_Error_Rate normalized
+            '5': 'reallocated_health',  # Reallocated_Sector_Ct normalized
+            }
+
+        for attr in health_attrs:
+            if attr in attrs:
+                values[health_attrs[attr]] = attrs[attr]['value']
+
+        lifetime_health_attrs = [
+            '9',   # Power_On_Hours
+            '12',  # Power_Cycle_Count
+            ]
+
+        for attr in lifetime_health_attrs:
+            if attr in attrs:
+                values['lifetime_health'] = attrs[attr]['value']
+                break
 
         # https://www.hdsentinel.com/ssd_case_health_decrease_wearout.php
         ssd_health_attrs = [
@@ -148,7 +211,27 @@ class smartctl(CommandParser):
             '231',  # SSD Life Left
             ]
 
-        values = dict()
+        for attr in ssd_health_attrs:
+            if attr in attrs and not (hard_disk and '231' == attr):
+                values['ssd_health'] = attrs[attr]['value']
+                break
+
+        if ('ssd_health' not in values
+                and 'Percentage Used Endurance Indicator' in stats):
+            used = stats['Percentage Used Endurance Indicator']
+            values['ssd_health'] = 100 - used
+
+        lowest = 100
+        for attr in attrs:
+            if ('Temperature' not in attrs[attr]['name']
+                    and not (0 == attrs[attr]['value']
+                             and 0 == attrs[attr]['threshold'])
+                    and attr not in lifetime_health_attrs
+                    and attr not in ssd_health_attrs
+                    and attrs[attr]['value'] < lowest):
+                lowest = attrs[attr]['value']
+
+        values['overall_health'] = lowest
 
         for point in cmd.points:
             if point.id in values:

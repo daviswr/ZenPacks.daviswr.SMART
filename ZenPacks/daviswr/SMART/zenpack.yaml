@@ -8,12 +8,13 @@ classes:
     base: [zenpacklib.HardDisk]
     label: SMART Device
     monitoring_templates:
-      - SmartDevice
+      - SMART Device
     properties:
       DEFAULTS:
         type: string
         grid_display: false
         details_display: true
+      # smartctl --info
       DevicePath:
         label: Device Path
         short_label: Path
@@ -34,24 +35,24 @@ classes:
         short_label: Firmware
         order: 21
       UserCapacity:
-        type: int
         label: Capacity
         short_label: Size
+        type: int
         renderer: Zenoss.render.bytesString
         grid_display: true
-        order: 14
+        order: 15
         label_width: 55
         content_width: 55
       LogicalSector:
-        type: int
         label: Logical Sector Size
         short_label: Log. Sector
+        type: int
         renderer: Zenoss.render.bytesString
         order: 22
       PhysicalSector:
-        type: int
         label: Physical Sector Size
         short_label: Phys. Sector
+        type: int
         renderer: Zenoss.render.bytesString
         order: 23
       RotationRate:
@@ -79,9 +80,10 @@ classes:
         default: "N/A"
         order: 28
       SmartSupport:
-        type: int
         label: SMART Support
         short_label: SMART
+        type: int
+        datapoint: smartctl_smart_enabled
         enum:
           0: "clear"
           1: "critical"
@@ -91,7 +93,7 @@ classes:
         label_width: 35
         content_width: 35
         order: 13
-      # Requires --get=all
+      # smartctl --get=all
       AamFeature:
         label: Automatic Acoustic Management
         short_label: AAM
@@ -102,7 +104,7 @@ classes:
         short_label: AAM
         default: "N/A"
         order: 30
-      RdLookahead:
+      RdLookAhead:
         label: Read Look-Ahead
         default: "N/A"
         order: 31
@@ -115,11 +117,26 @@ classes:
         short_label: Security
         default: "N/A"
         order: 33
-      # Requires --capabilities
+      # smartctl --capabilities
       AutoOfflineDataCollection:
         label: Auto Offline Data Collection
         short_label: Offline Collection
         order: 34
+      # smartctl --health
+      HealthCheck:
+        label: Health Check
+        short_label: Health
+        type: int
+        datapoint: smartctl_health_check
+        enum:
+          0: "clear"
+          1: "critical"
+        renderer: Zenoss.render.severity
+        grid_display: true
+        details_display: false
+        label_width: 35
+        content_width: 35
+        order: 14
 
 
 zProperties:
@@ -127,3 +144,119 @@ zProperties:
     category: SMART
   zSmartDiskMapMatch:
     type: string
+
+
+device_classes:
+  /:
+    remove: false
+    templates:
+      SMART Device:
+        targetPythonClass: ZenPacks.daviswr.SMART.SmartDevice
+        datasources:
+          smartctl:
+            type: COMMAND
+            usessh: true
+            cycletime: 60
+            component: "${here/id}"
+            parser: ZenPacks.daviswr.SMART.parsers.smartctl
+            commandTemplate: |-
+              $$ZENOTHING
+              smart_path=$$(whereis smartctl | cut -d' ' -f2)
+              if [[ $$smart_path != *smartctl ]]
+              then
+                  smart_path=$$(command -v smartctl)
+              fi
+              smart_opts="--badsum=ignore --nocheck=standby"
+              smart_logs="--log=scttemp --log=devstat --log=ssd --log=sataphy --log=sasphy"
+              info_cmd="$$smart_path --info --health --attributes $$smart_logs $$smart_opts"
+              health_cmd="$$smart_path --health $$smart_opts"
+              permission=$$(eval $$health_cmd ${here/DevicePath} | tail -1)
+              if [[ $$permission == *Permission\ denied ]]
+              then
+                  info_cmd="sudo $$info_cmd"
+              fi
+              echo "Component: ${here/title}"
+              eval $$info_cmd ${here/DevicePath}
+            datapoints:
+              health_check: GAUGE
+              lifetime_health: GAUGE
+              overall_health: GAUGE
+              pending_sectors: GAUGE
+              phy_events: DERIVE_MIN_0
+              read_error_health: GAUGE
+              reallocated_health: GAUGE
+              reallocated_sectors: DERIVE_MIN_0
+              smart_enabled: GAUGE
+              ssd_health: GAUGE
+              temperature_celsius: GAUGE
+
+        thresholds:
+          SMART:
+            type: MinMaxThreshold
+            enabled: true
+            dsnames:
+              - smartctl_smart_enabled
+              - smartctl_health_check
+            severity: 4
+            eventClass: /Status/SMART
+            minval: 0
+
+        graphs:
+          Health:
+            units: percentage
+            miny: 0
+            maxy: 100
+            graphpoints:
+                DEFAULTS:
+                  lineType: LINE
+                  lineWidth: 2
+                Overall:
+                  dpName: smartctl_overall_health
+                  colorindex: 0
+                Rated Lifetime:
+                  dpName: smartctl_lifetime_health
+                  colorindex: 1
+                Read Errors:
+                  dpName: smartctl_read_error_health
+                  colorindex: 2
+                Reallocated Sectors:
+                  dpName: smartctl_reallocated_health
+                  colorindex: 7
+                SSD Life:
+                  dpName: smartctl_ssd_health
+                  colorindex: 10
+          Temperature:
+            units: deg. C
+            graphpoints:
+              Temperature:
+                dpName: smartctl_temperature_celsius
+                lineType: LINE
+                lineWidth: 2
+                colorindex: 0
+          PHY Events:
+            units: events/sec
+            miny: 0
+            graphpoints:
+              Events:
+                dpName: smartctl_phy_events
+                lineType: AREA
+                colorindex: 0
+          Sector Reallocation:
+            units: sectors
+            miny: 0
+            graphpoints:
+              DEFAULTS:
+                lineType: LINE
+                lineWidth: 2
+              Reallocation:
+                dpName: smartctl_reallocated_sectors
+                colorindex: 0
+              Pending:
+                dpName: smartctl_pending_sectors
+                colorindex: 1
+
+
+event_classes:
+  /Status/SMART:
+    remove: true
+    description: Self-Monitoring, Analysis and Reporting Technology
