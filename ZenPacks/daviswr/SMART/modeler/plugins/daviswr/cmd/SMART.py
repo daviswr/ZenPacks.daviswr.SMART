@@ -119,7 +119,7 @@ class SMART(CommandPlugin):
                 if ': ' in line and 'capability' not in line:
                     key_raw, value_raw = line.replace(' is', '').split(':', 1)
                     key = ''
-                    for term in key_raw.strip().replace('-', '').split(' '):
+                    for term in key_raw.strip().replace('-', ' ').split(' '):
                         key += term.title()
                     value = value_raw.strip()
                     # Various cleanup
