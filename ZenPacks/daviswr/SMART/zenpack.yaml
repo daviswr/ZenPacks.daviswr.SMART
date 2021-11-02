@@ -87,6 +87,7 @@ classes:
         enum:
           0: "clear"
           1: "critical"
+          2: "debug"
         renderer: Zenoss.render.severity
         grid_display: true
         details_display: false
@@ -131,6 +132,7 @@ classes:
         enum:
           0: "clear"
           1: "critical"
+          2: "debug"
         renderer: Zenoss.render.severity
         grid_display: true
         details_display: false
@@ -161,10 +163,10 @@ device_classes:
             parser: ZenPacks.daviswr.SMART.parsers.smartctl
             commandTemplate: |-
               $$ZENOTHING
-              smart_path=$$(whereis smartctl | cut -d' ' -f2)
+              smart_path=$$(command -v smartctl)
               if [[ $$smart_path != *smartctl ]]
               then
-                  smart_path=$$(command -v smartctl)
+                  smart_path=$$(whereis smartctl | cut -d' ' -f2)
               fi
               smart_opts="--badsum=ignore --nocheck=standby"
               smart_logs="--log=scttemp --log=devstat --log=ssd --log=sataphy --log=sasphy"
@@ -260,3 +262,62 @@ event_classes:
   /Status/SMART:
     remove: true
     description: Self-Monitoring, Analysis and Reporting Technology
+    transform: |-
+      from Products.ZenEvents.ZenEventClasses import Clear, Warning, Error
+
+      from ZenPacks.daviswr.SMART.lib.util import (
+          HEALTH_FAILED,
+          HEALTH_PASSED,
+          HEALTH_UNKNOWN,
+          SMART_DISABLED,
+          SMART_ENABLED,
+          SMART_UNKNOWN,
+          )
+
+      current = int(float(evt.current))
+      metric = 'SMART status'
+      states = dict()
+      severity = dict()
+
+      if 'health_check' in evt.eventKey:
+          metric = 'Health check'
+          states = {
+              HEALTH_FAILED: 'failed',
+              HEALTH_PASSED: 'passed',
+              HEALTH_UNKNOWN: 'result unknown',
+              }
+          severity = {
+              HEALTH_FAILED: Error,
+              HEALTH_PASSED: Clear,
+              HEALTH_UNKNOWN: Warning,
+              }
+      elif 'smart_enabled' in evt.eventKey:
+          metric = 'SMART'
+          states = {
+              SMART_DISABLED: 'is disabled',
+              SMART_ENABLED: 'is enabled',
+              SMART_UNKNOWN: 'state unknown',
+              }
+          severity = {
+              SMART_DISABLED: Error,
+              SMART_ENABLED: Clear,
+              SMART_UNKNOWN: Warning,
+              }
+          # Report component as "down" if SMART is disabled
+          evt.eventClass = '/Status'
+
+      evt.summary = '{0} {1}'.format(metric, states.get(current, 'unknown'))
+      evt.severity = severity.get(current, Warning)
+
+
+process_class_organizers:
+  smartmontools:
+    remove: true
+    process_classes:
+      DEFAULTS:
+        excludeRegex: "\\b(vim|tail|grep|tar|cat|bash|daemondo)\\b"
+        fail_severity: 4
+
+      smartd:
+        description: SMART Disk Monitoring Daemon
+        includeRegex: smartd
