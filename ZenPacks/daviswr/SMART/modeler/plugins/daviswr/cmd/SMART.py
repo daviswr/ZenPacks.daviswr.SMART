@@ -24,10 +24,10 @@ class SMART(CommandPlugin):
     # AppleAHCI/PRT2@2/IOAHCIDevice@0/AppleAHCIDiskDriver/
     # IOAHCIBlockStorageDevice
     command_raw = r"""$ZENOTHING;
-        smart_path=$(whereis smartctl | cut -d' ' -f2);
+        smart_path=$(command -v smartctl);
         if [[ $smart_path != *smartctl ]];
         then
-            smart_path=$(command -v smartctl);
+            smart_path=$(whereis smartctl | cut -d' ' -f2);
         fi;
         smart_opts="--badsum=ignore --nocheck=standby";
         if [[ $(uname -s) == "Darwin" ]];
