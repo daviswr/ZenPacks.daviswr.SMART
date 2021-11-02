@@ -250,6 +250,8 @@ device_classes:
               DEFAULTS:
                 lineType: LINE
                 lineWidth: 2
+                format: "%5.0lf%s"
+                rpn: "CEIL"
               Reallocation:
                 dpName: smartctl_reallocated_sectors
                 colorindex: 0
