@@ -1,14 +1,15 @@
 name: ZenPacks.daviswr.SMART
 
 class_relationships:
-  - Products.ZenModel.Device.Device(smartDevices) 1:MC SmartDevice(server)
+  - Products.ZenModel.Device.Device(smartStorage) 1:MC SmartStorage(server)
 
 classes:
-  SmartDevice:
+  SmartStorage:
     base: [zenpacklib.HardDisk]
-    label: SMART Device
+    label: SMART
+    plural_label: SMART
     monitoring_templates:
-      - SMART Device
+      - SMART
     properties:
       DEFAULTS:
         type: string
@@ -152,8 +153,8 @@ device_classes:
   /:
     remove: false
     templates:
-      SMART Device:
-        targetPythonClass: ZenPacks.daviswr.SMART.SmartDevice
+      SMART:
+        targetPythonClass: ZenPacks.daviswr.SMART.SmartStorage
         datasources:
           smartctl:
             type: COMMAND

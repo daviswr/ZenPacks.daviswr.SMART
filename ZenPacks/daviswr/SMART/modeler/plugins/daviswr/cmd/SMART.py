@@ -16,8 +16,8 @@ from ZenPacks.daviswr.SMART.lib.util import (
 class SMART(CommandPlugin):
     """ Models SMART-supporting storage devices via SSH """
 
-    relname = 'smartDevices'
-    modname = 'ZenPacks.daviswr.SMART.SmartDevice'
+    relname = 'smartStorage'
+    modname = 'ZenPacks.daviswr.SMART.SmartStorage'
 
     # On macOS, a 'smartctl --scan' result looks like
     # IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/SATA@1F,2/
