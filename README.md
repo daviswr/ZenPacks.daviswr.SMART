@@ -16,7 +16,6 @@ Example entries in `/etc/sudoers`
 Cmnd_Alias SMARTCTL = /usr/sbin/smartctl --info *
 zenoss ALL=(ALL) NOPASSWD: SMARTCTL
 ```
-
 ## zProperties
 * `zSmartDiskMapMatch`
   * Regex of device names for the modeler to match. If unset, there is no filtering, and all discovered devices (see below) are modeled.
@@ -27,7 +26,6 @@ On systems other than macOS, SMART-supporting devices are discovered with `smart
 This pack will **not** attempt to enable SMART on any device using `smartctl --smart=on`. Configuration of smartmon is outside the scope of this pack and document.
 
 ## Usage
-### Modelers
 I'm not going to make any assumptions about your device class organization, so it's up to you to configure the `daviswr.cmd.SMART` modeler on the appropriate class or device. 
 
 ## Special Thanks
