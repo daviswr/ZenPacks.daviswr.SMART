@@ -20,21 +20,25 @@ attr_override = {
     '12': 'Power Cycle Count',
     '169': 'Remaining Life Percentage',
     '170': 'Available Reserved Space',
-    '171': 'SSD Program Fail Count',
-    '172': 'SSD Erase Fail Count',
-    '173': 'SSD Wear Leveling Count',
-    '174': 'Unexpected Power Loss Count',
+    '171': 'Program Fail Count',
+    '172': 'Erase Fail Count',
+    '173': 'Ave Block-Erase Count',
+    '174': 'Unexpect Power Loss Ct',
     '175': 'Program Fail Count Chip',
     '176': 'Erase Fail Count Chip',
     '177': 'Wear Leveling Count',
     '178': 'Used Rsvd Blk Cnt Chip',
     '179': 'Used Rsvd Blk Cnt Tot',
-    '180': 'Unused Rsvd Blk Cnt Tot',
+    '180': 'Unused Rsvd Blk Cnt Tot',  # Unused Reserve NAND Blk
     '181': 'Program Fail Cnt Total',
     '182': 'Erase Fail Count Total',
-    '183': 'Runtime Bad Block',
-    '184': 'End-to-End Error',
-    '187': 'Reported Uncorrect',
+    '183': 'Runtime Bad Block',        # SATA Interfac Downshift
+    '184': 'End-to-End_Error',         # Error Correction Count
+    '187': 'Uncorrectable Error Cnt',  # Reported Uncorrect
+    '188': 'Command Timeout',
+    '189': 'High Fly Writes',          # Airflow Temperature Cel
+    '190': 'Airflow Temperature Cel',
+    '191': 'G-Sense Error Rate',
     '192': 'Power-Off Retract Count',
     '193': 'Load Cycle Count',
     '194': 'Temperature Celsius',
@@ -42,15 +46,22 @@ attr_override = {
     '196': 'Reallocated Event Count',
     '197': 'Current Pending Sector',
     '198': 'Offline Uncorrectable',
-    '199': 'UDMA CRC Error Count',
+    '199': 'CRC Error Count',          # UDMA CRC Error Count
     '200': 'Multi Zone Error Rate',
-    '202': 'Data Address Mark Errors',
-    '206': 'Flying Height',
+    '201': 'Unc Soft Read Err Rate',
+    '202': 'Percent Lifetime Remain',
+    '204': 'Soft ECC Correct Rate',
+    '206': 'Write Error Rate',         # Flying Height
+    '210': 'Success RAIN Recov Cnt',
+    '230': 'Life Curve Status',
     '231': 'SSD Life Left',
-    '210': 'Vibration During Write',
+    '235': 'POR Recovery Count',
     '240': 'Head Flying Hours',
     '241': 'Total LBAs Written',
     '242': 'Total LBAs Read',
+    '246': 'Total LBAs Written',       # Total Host Sector Write
+    '247': 'Host Program Page Count',
+    '248': 'FTL Program Page Count',
     }
 
 # *Not* exhaustive...
