@@ -169,7 +169,7 @@ device_classes:
               then
                   smart_path=$$(whereis smartctl | cut -d' ' -f2)
               fi
-              smart_opts="--badsum=ignore --nocheck=standby"
+              smart_opts="--badsum=ignore --nocheck=standby --quietmode=noserial"
               smart_logs="--log=scttemp --log=devstat --log=ssd --log=sataphy --log=sasphy"
               info_cmd="$$smart_path --info --health --attributes $$smart_logs $$smart_opts"
               health_cmd="$$smart_path --health $$smart_opts"
