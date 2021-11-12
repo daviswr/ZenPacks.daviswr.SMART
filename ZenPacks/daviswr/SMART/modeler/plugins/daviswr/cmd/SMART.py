@@ -159,7 +159,7 @@ class SMART(CommandPlugin):
                     dev_map['title'] = dev_map['DevicePath'].split('/')[-1]
                     dev_map['id'] = self.prepId(dev_map['title'])
                     om = ObjectMap(modname=self.modname, data=dev_map)
-                    model = dev_map.get('DeviceModel', '')
+                    model = dev_map.get('DeviceModel', '').replace('_', ' ')
                     if model:
                         if ' ' in model:
                             vendor, model = model.split(' ', 1)
