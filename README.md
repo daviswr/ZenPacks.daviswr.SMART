@@ -4,7 +4,6 @@ ZenPack to model & monitor storage devices' S.M.A.R.T. status
 
 ## Requirements
 
----
 * [smartmontools](https://www.smartmontools.org/)
   * Should work with versions 6.x and 7.x 
 * An account on the host, which can
@@ -18,18 +17,15 @@ Example entries in `/etc/sudoers`
 Cmnd_Alias SMARTCTL = /usr/sbin/smartctl --info *
 zenoss ALL=(ALL) NOPASSWD: SMARTCTL
 ```
----
 ## zProperties
 * `zSmartDiskMapMatch`
   * Regex of device names for the modeler to match. If unset, there is no filtering, and all discovered devices (see below) are modeled.
 
----
 ## Discovery
 On systems other than macOS, SMART-supporting devices are discovered with `smartctl --scan`. Due to the device name format that command returns on macOS, devices are discovered using `diskutil list` instead and results found not to support SMART are ignored. Neither of these commands should require elevated privileges.
 
 This pack will **not** attempt to enable SMART on any device using `smartctl --smart=on`. Configuration of smartmon is outside the scope of this pack and document.
 
----
 ## Datapoints & Graphs
 Percentages come from the normalized "Value" columns as reported by `smartctl`. Values in excess of 100 are scaled to 0-100.
 
@@ -73,12 +69,10 @@ Raw values for `Reallocated_Sector_Ct` (5) and `Offline_Uncorrectable` (198) as 
 ### Temperature Graph
 Current raw value for `Temperature_Celsius` (194) or `Airflow_Temperature_Cel` (190). `Current Temperature` is taken from SCT Temperature or Device Stats if neither attribute is present. Attribute 231 may be used if device is a hard disk.
 
----
 ## Usage
 I'm not going to make any assumptions about your device class organization, so it's up to you to configure the `daviswr.cmd.SMART` modeler on the appropriate class or device. 
 
 While this ZenPack tries to be as generic as possible, please keep in mind your storage device manufacturer may have chosen to use attributes in a proprietary way.
 
----
 ## Special Thanks
 * [RageLtMan](https://github.com/sempervictus)
