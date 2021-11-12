@@ -188,6 +188,9 @@ device_classes:
               phy_events: DERIVE_MIN_0
               read_error_health: GAUGE
               reallocated_health: GAUGE
+              reallocated_offline: DERIVE_MIN_0
+              reallocated_offline_raw: GAUGE
+              reallocated_raw: GAUGE
               reallocated_sectors: DERIVE_MIN_0
               smart_enabled: GAUGE
               ssd_health: GAUGE
@@ -204,8 +207,29 @@ device_classes:
             eventClass: /Status/SMART
             minval: 0
 
+          Reallocation:
+            type: MinMaxThreshold
+            enabled: true
+            dsnames:
+              - smartctl_reallocated_raw
+              - smartctl_reallocated_offline_raw
+            severity: 5
+            eventClass: /Status/SMART
+            # 'Failure Trends in a Large Disk Drive Population'
+            # by Pinheiro, Weber, and Barroso
+            # https://research.google/pubs/pub32774/
+            # "After their first reallocation, drives are over 14 times
+            # more likely to fail within 60 days than drives without
+            # reallocation counts, making the critical threshold for this
+            # parameter also one...
+            # After the first offline reallocation, drives have over
+            # 21 times higher chances of failure within 60 days than
+            # drives without offline reallocations; an effect that is
+            # again more drastic than total reallocations."
+            minval: 0
+
         graphs:
-          Health:
+          Health Score:
             units: percentage
             miny: 0
             maxy: 100
@@ -228,6 +252,39 @@ device_classes:
                 SSD Life:
                   dpName: smartctl_ssd_health
                   colorindex: 10
+          Reallocated Sector Count:
+            units: sectors
+            miny: 0
+            graphpoints:
+              DEFAULTS:
+                lineType: LINE
+                lineWidth: 2
+                format: "%5.0lf%s"
+                rpn: "CEIL"
+              Online:
+                dpName: smartctl_reallocated_raw
+                colorindex: 0
+              Offline:
+                dpName: smartctl_reallocated_offline_raw
+                colorindex: 1
+          Reallocation Rate:
+            units: sectors
+            miny: 0
+            graphpoints:
+              DEFAULTS:
+                lineType: LINE
+                lineWidth: 2
+                format: "%5.0lf%s"
+                rpn: "CEIL"
+              Online:
+                dpName: smartctl_reallocated_sectors
+                colorindex: 0
+              Offline:
+                dpName: smartctl_reallocated_offline
+                colorindex: 1
+              Pending:
+                dpName: smartctl_pending_sectors
+                colorindex: 2
           Temperature:
             units: deg. C
             graphpoints:
@@ -244,21 +301,7 @@ device_classes:
                 dpName: smartctl_phy_events
                 lineType: AREA
                 colorindex: 0
-          Sector Reallocation:
-            units: sectors
-            miny: 0
-            graphpoints:
-              DEFAULTS:
-                lineType: LINE
-                lineWidth: 2
-                format: "%5.0lf%s"
-                rpn: "CEIL"
-              Reallocation:
-                dpName: smartctl_reallocated_sectors
-                colorindex: 0
-              Pending:
-                dpName: smartctl_pending_sectors
-                colorindex: 1
+
 
 
 event_classes:
@@ -266,7 +309,8 @@ event_classes:
     remove: true
     description: Self-Monitoring, Analysis and Reporting Technology
     transform: |-
-      from Products.ZenEvents.ZenEventClasses import Clear, Warning, Error
+      #pylint: disable=invalid-name
+      from Products.ZenEvents import Event
 
       from ZenPacks.daviswr.SMART.lib.util import (
           HEALTH_FAILED,
@@ -290,9 +334,9 @@ event_classes:
               HEALTH_UNKNOWN: 'result unknown',
               }
           severity = {
-              HEALTH_FAILED: Error,
-              HEALTH_PASSED: Clear,
-              HEALTH_UNKNOWN: Warning,
+              HEALTH_FAILED: Event.Error,
+              HEALTH_PASSED: Event.Clear,
+              HEALTH_UNKNOWN: Event.Warning,
               }
       elif 'smart_enabled' in evt.eventKey:
           metric = 'SMART'
@@ -302,15 +346,24 @@ event_classes:
               SMART_UNKNOWN: 'state unknown',
               }
           severity = {
-              SMART_DISABLED: Error,
-              SMART_ENABLED: Clear,
-              SMART_UNKNOWN: Warning,
+              SMART_DISABLED: Event.Error,
+              SMART_ENABLED: Event.Clear,
+              SMART_UNKNOWN: Event.Warning,
               }
           # Report component as "down" if SMART is disabled
           evt.eventClass = '/Status'
 
-      evt.summary = '{0} {1}'.format(metric, states.get(current, 'unknown'))
-      evt.severity = severity.get(current, Warning)
+      if 'reallocated' in evt.eventKey:
+          # Threshold will set severity to Error
+          evt.summary = '{0} sector reallocation has occurred {1} time'.format(
+              'Offline' if 'offline' in evt.eventKey else 'Online',
+              current
+              )
+          if current > 1:
+              evt.summary += 's'
+      else:
+          evt.summary = '{0} {1}'.format(metric, states.get(current, 'unknown'))
+          evt.severity = severity.get(current, Event.Warning)
 
 
 process_class_organizers:

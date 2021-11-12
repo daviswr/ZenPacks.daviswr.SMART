@@ -1,5 +1,5 @@
 #pylint: disable=invalid-name
-from Products.ZenEvents.ZenEventClasses import Clear, Warning, Error
+from Products.ZenEvents import Event
 
 from ZenPacks.daviswr.SMART.lib.util import (
     HEALTH_FAILED,
@@ -23,9 +23,9 @@ if 'health_check' in evt.eventKey:
         HEALTH_UNKNOWN: 'result unknown',
         }
     severity = {
-        HEALTH_FAILED: Error,
-        HEALTH_PASSED: Clear,
-        HEALTH_UNKNOWN: Warning,
+        HEALTH_FAILED: Event.Error,
+        HEALTH_PASSED: Event.Clear,
+        HEALTH_UNKNOWN: Event.Warning,
         }
 elif 'smart_enabled' in evt.eventKey:
     metric = 'SMART'
@@ -35,12 +35,21 @@ elif 'smart_enabled' in evt.eventKey:
         SMART_UNKNOWN: 'state unknown',
         }
     severity = {
-        SMART_DISABLED: Error,
-        SMART_ENABLED: Clear,
-        SMART_UNKNOWN: Warning,
+        SMART_DISABLED: Event.Error,
+        SMART_ENABLED: Event.Clear,
+        SMART_UNKNOWN: Event.Warning,
         }
     # Report component as "down" if SMART is disabled
     evt.eventClass = '/Status'
 
-evt.summary = '{0} {1}'.format(metric, states.get(current, 'unknown'))
-evt.severity = severity.get(current, Warning)
+if 'reallocated' in evt.eventKey:
+    # Threshold will set severity to Error
+    evt.summary = '{0} sector reallocation has occurred {1} time'.format(
+        'Offline' if 'offline' in evt.eventKey else 'Online',
+        current
+        )
+    if current > 1:
+        evt.summary += 's'
+else:
+    evt.summary = '{0} {1}'.format(metric, states.get(current, 'unknown'))
+    evt.severity = severity.get(current, Event.Warning)

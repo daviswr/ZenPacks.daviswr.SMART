@@ -70,9 +70,20 @@ class smartctl(CommandParser):
             threshold = int(threshold)
             attr_type = attr_type.replace('_', ' ').lower()
             raw = int(raw)  # RegEx should only match the digits
-            # WD drives scale some normalized values to 200
             if value > 100:
-                scale = value/100 if value >= 200 else 2
+                # Kingston SSDs scale some noramlized values to 120
+                if value <= 120:
+                    scale = 1.2
+                # WD drives scale some normalized values to 200
+                elif value <= 200:
+                    scale = 2.0
+                # 0-253 are possible values
+                # https://kb.vmware.com/s/article/2040405
+                # Observed on some Samsung SSDs
+                elif value <= 253:
+                    scale = 2.53
+                elif value > 253:
+                    scale = value/100.0
                 value = value/scale
                 threshold = value/scale
             attrs[attr_id] = {
@@ -164,16 +175,14 @@ class smartctl(CommandParser):
             value = stats['Number of Reallocated Logical Sectors']
             values['reallocated_sectors'] = value
 
-        # Temperature
-        if '194' in attrs:
-            values['temperature_celsius'] = attrs['194']['raw']
-        elif 'Current Temperature' in info:
-            values['temperature_celsius'] = info['Current Temperature']
-        elif 'Current Temperature' in stats:
-            values['temperature_celsius'] = stats['Current Temperature']
-        elif hard_disk and '231' in attrs:
-            # Some hard drives may use 231 for Temperature
-            values['temperature_celsius'] = attrs['231']['raw']
+        if 'reallocated_sectors' in values:
+            # "raw" is stored as a gauge, "sectors" as derive/counter
+            values['reallocated_raw'] = values['reallocated_sectors']
+
+        if '198' in attrs:
+            # "raw" is stored as a gauge, just "offline" as derive/counter
+            values['reallocated_offline'] = attrs['5']['raw']
+            values['reallocated_offline_raw'] = attrs['5']['raw']
 
         # Pending Sectors
         if '197' in attrs:
@@ -181,6 +190,19 @@ class smartctl(CommandParser):
         elif 'Number of Realloc. Candidate Logical Sectors' in stats:
             value = stats['Number of Realloc. Candidate Logical Sectors']
             values['pending_sectors'] = value
+
+        # Temperature
+        if '194' in attrs:
+            values['temperature_celsius'] = attrs['194']['raw']
+        elif '190' in attrs:
+            values['temperature_celsius'] = attrs['190']['raw']
+        elif 'Current Temperature' in info:
+            values['temperature_celsius'] = info['Current Temperature']
+        elif 'Current Temperature' in stats:
+            values['temperature_celsius'] = stats['Current Temperature']
+        elif hard_disk and '231' in attrs:
+            # Some hard drives may use 231 for Temperature
+            values['temperature_celsius'] = attrs['231']['raw']
 
         # Normalized values
         health_attrs = {
@@ -207,7 +229,7 @@ class smartctl(CommandParser):
             '169',  # Remaining Life Percentage
             '173',  # SSD Wear Leveling Count / Media Wearout Indicator
             '177',  # Wear Leveling Count
-            '202',  # Data Address Mark Errors / Percent Of Rated Lifetime Used
+            '202',  # Data Address Mark Errors / Percent Lifetime Remain
             '231',  # SSD Life Left
             ]
 
@@ -216,10 +238,12 @@ class smartctl(CommandParser):
                 values['ssd_health'] = attrs[attr]['value']
                 break
 
-        if ('ssd_health' not in values
-                and 'Percentage Used Endurance Indicator' in stats):
-            used = stats['Percentage Used Endurance Indicator']
-            values['ssd_health'] = 100 - used
+        if 'ssd_health' not in values:
+            if 'Percentage Used Endurance Indicator' in stats:
+                used = stats['Percentage Used Endurance Indicator']
+                values['ssd_health'] = 100 - used
+            elif 'Percentage Used' in info:
+                values['ssd_health'] = 100 - info['Percentage Used']
 
         lowest = 100
         for attr in attrs:
