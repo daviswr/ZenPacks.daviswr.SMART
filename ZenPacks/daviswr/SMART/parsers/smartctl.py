@@ -44,10 +44,14 @@ class smartctl(CommandParser):
                 elif key_raw.startswith('SMART overall-health'):
                     value = (HEALTH_PASSED if 'PASSED' in value
                              else HEALTH_FAILED)
+                elif 'SMART Health Status' == key_raw:
+                    value = (HEALTH_PASSED if 'OK' in value
+                             else HEALTH_FAILED)
                 info[key] = value
 
         component = info.get('Component', '')
-        hard_disk = isinstance(info.get('RotationRate', ''), int)
+        hard_disk = (isinstance(info.get('RotationRate', ''), int)
+                     or 'disk' == info.get('DeviceType', ''))
 
         ## Attributes
         attrs = dict()
@@ -152,10 +156,15 @@ class smartctl(CommandParser):
         ## Assemble datapoint values
 
         values = dict()
-        values['smart_enabled'] = info.get('SmartSupport', SMART_UNKNOWN)
+        values['smart_enabled'] = info.get(
+            'SmartSupport',
+            (SMART_ENABLED
+             if 'Device supports SMART and is Enabled' in cmd.result.output
+             else SMART_UNKNOWN)
+            )
         values['health_check'] = info.get(
             'SmartOverallHealthSelfAssessmentTestResult',
-            HEALTH_UNKNOWN
+            info.get('SmartHealthStatus', HEALTH_UNKNOWN)
             )
         values['phy_events'] = phy_events
 
@@ -173,6 +182,9 @@ class smartctl(CommandParser):
             values['reallocated_sectors'] = attrs['5']['raw']
         elif 'Number of Reallocated Logical Sectors' in stats:
             value = stats['Number of Reallocated Logical Sectors']
+            values['reallocated_sectors'] = value
+        elif 'Elements in grown defect list' in info:
+            value = info['Elements in grown defect list']
             values['reallocated_sectors'] = value
 
         if 'reallocated_sectors' in values:
@@ -198,16 +210,20 @@ class smartctl(CommandParser):
             values['temperature_celsius'] = attrs['190']['raw']
         elif 'Current Temperature' in info:
             values['temperature_celsius'] = info['Current Temperature']
+        elif 'Current Drive Temperature' in info:
+            values['temperature_celsius'] = info['Current Drive Temperature']
         elif 'Current Temperature' in stats:
             values['temperature_celsius'] = stats['Current Temperature']
         elif hard_disk and '231' in attrs:
             # Some hard drives may use 231 for Temperature
             values['temperature_celsius'] = attrs['231']['raw']
+        elif 'Temperature' in attrs.get('189', {}).get('name', ''):
+            values['temperature_celsius'] = attrs['189']['raw']
 
         # Normalized values
         health_attrs = {
-            '1': 'read_error_health',   # Raw_Read_Error_Rate normalized
-            '5': 'reallocated_health',  # Reallocated_Sector_Ct normalized
+            '1': 'read_error_health',   # Raw Read Error Rate normalized
+            '5': 'reallocated_health',  # Reallocated Sector Ct normalized
             }
 
         for attr in health_attrs:
@@ -215,8 +231,10 @@ class smartctl(CommandParser):
                 values[health_attrs[attr]] = attrs[attr]['value']
 
         lifetime_health_attrs = [
-            '9',   # Power_On_Hours
-            '12',  # Power_Cycle_Count
+            '9',    # Power On Hours
+            '193',  # Load Cycle Count
+            '225',  # Load/Unload Cycle Count
+            '12',   # Power Cycle Count
             ]
 
         for attr in lifetime_health_attrs:
@@ -224,12 +242,26 @@ class smartctl(CommandParser):
                 values['lifetime_health'] = attrs[attr]['value']
                 break
 
+        if 'lifetime_health' not in values:
+            # Load/Unload Cycle Count
+            if ('Specified load-unload count over device lifetime' in info
+                    and 'Accumulated load-unload cycles' in info):
+                total = info['Specified load-unload count over device lifetime']  # noqa
+                used = info['Accumulated load-unload cycles']
+                values['lifetime_health'] = used / float(total)
+            # Power Cycle Count
+            elif ('Specified cycle count over device lifetime' in info
+                    and 'Accumulated start-stop cycles' in info):
+                total = info['Specified cycle count over device lifetime']
+                used = info['Accumulated start-stop cycles']
+                values['lifetime_health'] = used / float(total)
+
         # https://www.hdsentinel.com/ssd_case_health_decrease_wearout.php
         ssd_health_attrs = [
             '169',  # Remaining Life Percentage
+            '202',  # Percent Lifetime Remain / Data Address Mark Errors
             '173',  # SSD Wear Leveling Count / Media Wearout Indicator
             '177',  # Wear Leveling Count
-            '202',  # Data Address Mark Errors / Percent Lifetime Remain
             '231',  # SSD Life Left
             ]
 
