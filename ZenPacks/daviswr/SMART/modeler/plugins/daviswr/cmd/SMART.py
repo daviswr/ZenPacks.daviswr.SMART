@@ -139,7 +139,13 @@ class SMART(CommandPlugin):
                         else:
                             dev_map['LogicalSector'] = value
                             dev_map['PhysicalSector'] = value
-                    elif 'SMART support' == key_raw:
+                    elif 'Logical block size' in key_raw:
+                        dev_map['LogicalSector'] = value
+                    elif 'Physical block size' in key_raw:
+                        dev_map['PhysicalSector'] = value
+                    elif key in ['SataVersion', 'TransportProtocol']:
+                        dev_map['TransportType'] = value
+                    elif key_raw == 'SMART support':
                         value = (SMART_ENABLED if 'Enabled' in value
                                  else SMART_DISABLED)
                     elif key_raw.startswith('AAM'):
