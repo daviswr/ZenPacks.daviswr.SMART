@@ -79,6 +79,6 @@ vendor_dict = {
 
 def gen_comp_id(device_path):
     """ Generates a component ID from the device path """
-    comp_id = device_path.replace('--device', '_').replace(' -d ', '_')
+    comp_id = device_path.replace(' --device ', '_').replace(' -d ', '_')
     comp_id = comp_id.replace('/', '_').replace(',', '')
     return comp_id
