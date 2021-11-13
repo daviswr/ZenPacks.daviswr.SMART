@@ -149,6 +149,8 @@ class SMART(CommandPlugin):
                         key = 'AamFeature'
                     elif key_raw.startswith('APM'):
                         key = 'ApmFeature'
+                    elif 'Product' == key and 'DeviceModel' not in dev_map:
+                        dev_map['DeviceModel'] = value
                     dev_map[key] = value
 
             if dev_map.get('DevicePath', None):
@@ -162,6 +164,14 @@ class SMART(CommandPlugin):
                     dev_map['title'] = dev_map['DevicePath'].split('/')[-1]
                     dev_map['id'] = self.prepId(dev_map['title'])
                     om = ObjectMap(modname=self.modname, data=dev_map)
+                    # Model fixup for SCSI devices
+                    if (dev_map.get('Vendor', None)
+                            and dev_map.get('Product', None)):
+                        if not dev_map['Product'].startswith(dev_map['Vendor']):  # noqa
+                            dev_map['DeviceModel'] = '{0} {1}'.format(
+                                dev_map['Vendor'],
+                                dev_map['Product']
+                                )
                     model = dev_map.get('DeviceModel', '').replace('_', ' ')
                     if model:
                         if ' ' in model:
