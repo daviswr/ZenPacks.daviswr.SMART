@@ -15,6 +15,7 @@ from ZenPacks.daviswr.SMART.lib.util import (
     SMART_ENABLED,
     SMART_UNKNOWN,
     attr_override,
+    gen_comp_id,
     )
 
 
@@ -102,7 +103,7 @@ class smartctl(CommandParser):
             if threshold > 0 and value <= threshold:
                 result.events.append({
                     'device': cmd.deviceConfig.device,
-                    'component': prepId(component),
+                    'component': prepId(gen_comp_id(component)),
                     'severity': Event.Error,
                     'eventKey': name.replace(' ', ''),
                     'eventClass': '/HW/Store',
@@ -115,7 +116,7 @@ class smartctl(CommandParser):
             else:
                 result.events.append({
                     'device': cmd.deviceConfig.device,
-                    'component': prepId(component),
+                    'component': prepId(gen_comp_id(component)),
                     'severity': Event.Clear,
                     'eventKey': name.replace(' ', ''),
                     'eventClass': '/HW/Store',

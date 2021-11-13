@@ -6,7 +6,7 @@ import re
 from Products.DataCollector.plugins.CollectorPlugin import CommandPlugin
 from Products.DataCollector.plugins.DataMaps import MultiArgs, ObjectMap
 
-from ZenPacks.daviswr.SMART.lib.util import vendor_dict
+from ZenPacks.daviswr.SMART.lib.util import gen_comp_id, vendor_dict
 
 
 class SMART(CommandPlugin):
@@ -20,26 +20,37 @@ class SMART(CommandPlugin):
     # AppleAHCI/PRT2@2/IOAHCIDevice@0/AppleAHCIDiskDriver/
     # IOAHCIBlockStorageDevice
     command_raw = r"""$ZENOTHING;
+        IFS=$(echo -en "\n\b");
         smart_path=$(command -v smartctl);
         if [[ $smart_path != *smartctl ]];
         then
             smart_path=$(whereis smartctl | cut -d' ' -f2);
         fi;
         smart_opts="--badsum=ignore --nocheck=standby";
-        if [[ $(uname -s) == "Darwin" ]];
+        if [[ $(uname -s) == Darwin ]];
         then
             scan_cmd="/usr/sbin/diskutil list | grep physical | cut -d' ' -f1";
+            scan_cmd=$(echo $scan_cmd "| sed 's~\$~ --device auto~g'");
         else
-            scan_cmd="$smart_path --scan $smart_opts | cut -d' ' -f1";
+            scan_cmd="$smart_path --scan $smart_opts | cut -d'#' -f1";
+            scan_cmd=$(echo $scan_cmd "| sed 's~-d scsi \|ata ~-d auto~g'");
         fi;
         health_cmd="$smart_path --health $smart_opts";
         for device in $(eval $scan_cmd);
         do
+            device=$(echo $device | sed 's~-d ~--device ~g');
             info_cmd="$smart_path --info --get=all --capabilities $smart_opts";
             permission=$(eval $health_cmd $device | tail -1);
             if [[ $permission == *Permission\ denied ]];
             then
-                info_cmd="sudo $info_cmd";
+                for priv_cmd in dzdo doas pfexec sudo;
+                do
+                    if [[ -e $(command -v $priv_cmd) ]];
+                    then
+                        break;
+                    fi;
+                done;
+                info_cmd="$priv_cmd $info_cmd";
             fi;
             if [[ $permission != *Operation\ not\ supported\ by\ device ]];
             then
@@ -48,7 +59,7 @@ class SMART(CommandPlugin):
                 echo "--------";
             fi;
         done"""
-    command = ' '.join(command_raw.replace('    ', '').splitlines())
+    command = ' '.join(command_raw.replace('  ', '').splitlines())
 
     def process(self, device, results, log):
         """ Generates RelationshipMaps from Command output """
@@ -161,8 +172,11 @@ class SMART(CommandPlugin):
                         dev_map['DevicePath']
                         )
                 else:
-                    dev_map['title'] = dev_map['DevicePath'].split('/')[-1]
-                    dev_map['id'] = self.prepId(dev_map['title'])
+                    dev_map['title'] = dev_map['DevicePath'].replace(
+                        '--device',
+                        '-d'
+                        )
+                    dev_map['id'] = self.prepId(gen_comp_id(dev_map['title']))
                     om = ObjectMap(modname=self.modname, data=dev_map)
                     # Model fixup for SCSI devices
                     if (dev_map.get('Vendor', None)
