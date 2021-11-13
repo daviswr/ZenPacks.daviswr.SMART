@@ -53,6 +53,7 @@ attr_override = {
     '204': 'Soft ECC Correct Rate',
     '206': 'Write Error Rate',         # Flying Height
     '210': 'Success RAIN Recov Cnt',
+    '225': 'Load/Unload Cycle Count',
     '230': 'Life Curve Status',
     '231': 'SSD Life Left',
     '235': 'POR Recovery Count',
