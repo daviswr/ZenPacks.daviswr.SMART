@@ -69,17 +69,18 @@ classes:
         label: ATA Version
         short_label: ATA
         default: "N/A"
-        order: 26
+        order: 28
       SataVersion:
         label: SATA Version
         short_label: SATA
         default: "N/A"
+        details_display: false
         order: 27
       TransportType:
-        label: Transport Type
+        label: Transport
         short_label: Transport
         default: "N/A"
-        order: 28
+        order: 26
       SmartSupport:
         label: SMART Support
         short_label: SMART
@@ -109,10 +110,12 @@ classes:
       RdLookAhead:
         label: Read Look-Ahead
         default: "N/A"
+        details_display: false
         order: 31
       WriteCache:
         label: Write Cache
         default: "N/A"
+        details_display: false
         order: 32
       AtaSecurity:
         label: ATA Security
