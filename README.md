@@ -37,7 +37,7 @@ If a normalized value is at or below a non-zero threshold as reported by `smartc
 The normalized value of whichever of the following attributes is found first:
 * 9 - Power On Hours
 * 193 - Load Cycle Count
-* 224 - Load/Unload Cycle Count
+* 225 - Load/Unload Cycle Count
 * 12 - Power Cycle Count
 
 Failing that, percentage of accumulated load-unload cycles vs lifetime specified, or accumulated start-stop cycles vs lifetime specified.
