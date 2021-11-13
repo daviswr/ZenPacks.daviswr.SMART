@@ -45,14 +45,14 @@ classes:
         label_width: 55
         content_width: 55
       LogicalSector:
-        label: Logical Sector Size
-        short_label: Log. Sector
+        label: Logical Block Size
+        short_label: Log. Block
         type: int
         renderer: Zenoss.render.bytesString
         order: 22
       PhysicalSector:
-        label: Physical Sector Size
-        short_label: Phys. Sector
+        label: Physical Block Size
+        short_label: Phys. Block
         type: int
         renderer: Zenoss.render.bytesString
         order: 23
@@ -68,18 +68,18 @@ classes:
       AtaVersion:
         label: ATA Version
         short_label: ATA
-        default: "N/A"
+        default: Unavailable
         order: 28
       SataVersion:
         label: SATA Version
         short_label: SATA
-        default: "N/A"
+        default: Unavailable
         details_display: false
         order: 27
       TransportType:
         label: Transport
         short_label: Transport
-        default: "N/A"
+        default: Unavailable
         order: 26
       SmartSupport:
         label: SMART Support
@@ -100,27 +100,27 @@ classes:
       AamFeature:
         label: Automatic Acoustic Management
         short_label: AAM
-        default: "N/A"
+        default: Unavailable
         order: 29
       ApmFeature:
         label: Advanced Power Management
         short_label: AAM
-        default: "N/A"
+        default: Unavailable
         order: 30
       RdLookAhead:
         label: Read Look-Ahead
-        default: "N/A"
+        default: Unavailable
         details_display: false
         order: 31
       WriteCache:
         label: Write Cache
-        default: "N/A"
+        default: Unavailable
         details_display: false
         order: 32
       AtaSecurity:
         label: ATA Security
         short_label: Security
-        default: "N/A"
+        default: Unavailable
         order: 33
       # smartctl --capabilities
       AutoOfflineDataCollection:
