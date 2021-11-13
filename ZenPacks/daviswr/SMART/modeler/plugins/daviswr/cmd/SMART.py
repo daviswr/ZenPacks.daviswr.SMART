@@ -6,11 +6,7 @@ import re
 from Products.DataCollector.plugins.CollectorPlugin import CommandPlugin
 from Products.DataCollector.plugins.DataMaps import MultiArgs, ObjectMap
 
-from ZenPacks.daviswr.SMART.lib.util import (
-    SMART_DISABLED,
-    SMART_ENABLED,
-    vendor_dict
-    )
+from ZenPacks.daviswr.SMART.lib.util import vendor_dict
 
 
 class SMART(CommandPlugin):
@@ -146,15 +142,16 @@ class SMART(CommandPlugin):
                     elif key in ['SataVersion', 'TransportProtocol']:
                         dev_map['TransportType'] = value
                     elif key_raw == 'SMART support':
-                        value = (SMART_ENABLED if 'Enabled' in value
-                                 else SMART_DISABLED)
+                        # This comes from a datapoint rather
+                        # than modeled attribute
+                        continue
                     elif key_raw.startswith('AAM'):
                         key = 'AamFeature'
                     elif key_raw.startswith('APM'):
                         key = 'ApmFeature'
                     dev_map[key] = value
 
-            if 'DevicePath' in dev_map:
+            if dev_map.get('DevicePath', None):
                 if match_re and not re.search(match_re, dev_map['DevicePath']):
                     log.info(
                         '%s: %s ignored due to zSmartDiskMapMatch',
