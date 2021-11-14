@@ -76,6 +76,12 @@ class SMART(CommandPlugin):
         else:
             log.debug('%s: zSmartDiskMapMatch not set', device.id)
 
+        skip_unsupport = getattr(device, 'zSmartIgnoreUnsupported', '')
+        if skip_unsupport:
+            log.debug('%s: zSmartIgnoreUnsupported set', device.id)
+        else:
+            log.debug('%s: zSmartIgnoreUnsupported not set', device.id)
+
         # Example:     512 bytes logical, 4096 bytes physical
         sector_re = r'(\d+) bytes logical, (\d+) bytes physical'
 
@@ -150,18 +156,23 @@ class SMART(CommandPlugin):
                         dev_map['LogicalSector'] = value
                     elif 'Physical block size' in key_raw:
                         dev_map['PhysicalSector'] = value
+                    elif 'Formatted LBA Size' in key_raw:
+                        dev_map['LogicalSector'] = value
                     elif key in ['SataVersion', 'TransportProtocol']:
                         dev_map['TransportType'] = value
-                    elif key_raw == 'SMART support':
-                        # This comes from a datapoint rather
-                        # than modeled attribute
-                        continue
+                    elif 'Total NVM Capacity' in key_raw:
+                        dev_map['UserCapacity'] = value
                     elif key_raw.startswith('AAM'):
                         key = 'AamFeature'
                     elif key_raw.startswith('APM'):
                         key = 'ApmFeature'
-                    elif 'Product' == key and 'DeviceModel' not in dev_map:
+                    elif (key in ['Product', 'ModelNumber']
+                            and 'DeviceModel' not in dev_map):
                         dev_map['DeviceModel'] = value
+                    elif key_raw == 'SMART support':
+                        # This comes from a datapoint rather
+                        # than modeled attribute
+                        continue
                     dev_map[key] = value
 
             if dev_map.get('DevicePath', None):
@@ -171,13 +182,20 @@ class SMART(CommandPlugin):
                         device.id,
                         dev_map['DevicePath']
                         )
+                elif (('Unavailable - device lacks SMART capability' in dev
+                        or 'Operation not supported by device' in dev)
+                        and skip_unsupport):
+                    log.info(
+                        '%s: %s does not support SMART, ignoring',
+                        device.id,
+                        dev_map['DevicePath']
+                        )
                 else:
                     dev_map['title'] = dev_map['DevicePath'].replace(
                         '--device',
                         '-d'
                         )
                     dev_map['id'] = self.prepId(gen_comp_id(dev_map['title']))
-                    om = ObjectMap(modname=self.modname, data=dev_map)
                     # Model fixup for SCSI devices
                     if (dev_map.get('Vendor', None)
                             and dev_map.get('Product', None)):
@@ -186,6 +204,11 @@ class SMART(CommandPlugin):
                                 dev_map['Vendor'],
                                 dev_map['Product']
                                 )
+                    # NVMe form-factor
+                    if ('FormFactor' not in dev_map
+                            and 'M.2' in dev_map.get('DeviceModel', '')):
+                        dev_map['FormFactor'] = 'M.2'
+                    om = ObjectMap(modname=self.modname, data=dev_map)
                     model = dev_map.get('DeviceModel', '').replace('_', ' ')
                     if model:
                         if ' ' in model:

@@ -150,6 +150,9 @@ zProperties:
     category: SMART
   zSmartDiskMapMatch:
     type: string
+  zSmartIgnoreUnsupported:
+    type: boolean
+    default: true
 
 
 device_classes:
