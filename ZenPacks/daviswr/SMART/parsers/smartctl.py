@@ -183,12 +183,23 @@ class smartctl(CommandParser):
         # 0x0008  2            0  Device-to-host non-data FIS retries
         # 0x0009  2            3  Transition from drive PhyRdy to drive PhyNRdy
         # 0x000a  2            4  Device-to-host register FISes sent due to a COMRESET  # noqa
-        phy_re = r'0x\w{4}  \d\s+(\d+)  (\w.*)'
-        matches = re.findall(phy_re, cmd.result.output)
+        sata_phy_re = r'0x\w{4}  \d\s+(\d+)  (\w.*)'
+        # Example:
+        #     Phy event descriptors:
+        #      Invalid word count: 0
+        #      Running disparity error count: 0
+        #      Loss of dword synchronization count: 2
+        #      Phy reset problem count: 2
+        sas_phy_re = r'     \w.*?: (\d+)'
+        matches = (re.findall(sata_phy_re, cmd.result.output)
+                   or re.findall(sas_phy_re, cmd.result.output))
         for match in matches:
-            value, name = match
-            if name != 'Vendor specific':
-                phy_events += int(value)
+            if len(match) == 2:
+                value, name = match
+                if name != 'Vendor specific':
+                    phy_events += int(value)
+            else:
+                phy_events += int(match)
 
         ## Generate Threshold Events
 
