@@ -19,6 +19,7 @@ class SMART(CommandPlugin):
     # IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/SATA@1F,2/
     # AppleAHCI/PRT2@2/IOAHCIDevice@0/AppleAHCIDiskDriver/
     # IOAHCIBlockStorageDevice
+    # On Linux, 'smartctl --scan' may not show NVMe devices
     command_raw = r"""$ZENOTHING;
         IFS=$(echo -en "\n\b");
         smart_path=$(command -v smartctl);
@@ -30,10 +31,17 @@ class SMART(CommandPlugin):
         if [[ $(uname -s) == Darwin ]];
         then
             scan_cmd="/usr/sbin/diskutil list | grep physical | cut -d' ' -f1";
-            scan_cmd=$(echo $scan_cmd "| sed 's~\$~ --device auto~g'");
+            scan_cmd="$scan_cmd | sed 's~\$~ --device auto~g'";
         else
             scan_cmd="$smart_path --scan $smart_opts | cut -d'#' -f1";
-            scan_cmd=$(echo $scan_cmd "| sed 's~-d scsi \|ata ~-d auto~g'");
+            scan_cmd="$scan_cmd | sed 's~-d scsi \|ata ~-d auto~g'";
+        fi;
+        if [[ $(uname -s) == Linux ]];
+        then
+            scan_cmd="$scan_cmd ; ls /dev/nvme* 2>/dev/null";
+            scan_cmd="$scan_cmd | grep -e 'nvme[[:digit:]]\$'";
+            scan_cmd="$scan_cmd | sed 's~\$~ --device auto~g'";
+            scan_cmd="$scan_cmd | sort -u";
         fi;
         health_cmd="$smart_path --health $smart_opts";
         for device in $(eval $scan_cmd);
