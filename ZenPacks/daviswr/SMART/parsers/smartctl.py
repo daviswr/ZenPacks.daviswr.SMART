@@ -33,12 +33,13 @@ class smartctl(CommandParser):
                 key = ''
                 for term in key_raw.strip().replace('-', ' ').split(' '):
                     key += term.title()
-                value = value_raw.strip()
+                value = value_raw.strip().replace('%', '')
                 if 'bytes' in value or value[0].isdigit():
                     try:
                         value = int(value.split(' ')[0].replace(',', ''))
                     except ValueError:
-                        continue
+                        if 'Min/Max' not in key_raw:
+                            continue
                 elif 'SMART support' == key_raw:
                     value = (SMART_ENABLED if 'Enabled' in value
                              else SMART_DISABLED)
@@ -53,6 +54,37 @@ class smartctl(CommandParser):
         component = info.get('Component', '')
         hard_disk = (isinstance(info.get('RotationRate', ''), int)
                      or 'disk' == info.get('DeviceType', ''))
+
+        # Temperature Threshold
+        # SCSI
+        if ('CurrentDriveTemperature' in info
+                and 'DriveTripTemperature' in info):
+            temp_event = True
+            event_key = 'CurrentDriveTemperature'
+            current = info[event_key]
+            critical = info.get('DriveTripTemperature', 255)
+            warning = 255
+        # NVMe
+        elif 'Temperature' in info:
+            temp_event = True
+            event_key = 'Temperature'
+            current = info[event_key]
+            critical = info.get('CriticalComp.Temp.Threshold', 255)
+            warning = info.get('WarningComp.Temp.Threshold', 255)
+        # (S)ATA
+        elif 'CurrentTemperature' in info:
+            temp_event = True
+            event_key = 'CurrentTemperature'
+            current = info[event_key]
+            crit_str = info.get('Min/MaxTemperatureLimit', '0/255 Fake')
+            warn_str = info.get('Min/MaxRecommendedTemperature', '0/255 Fake')
+            temp_re = r'\d+/(\d+)'
+            match = re.search(temp_re, crit_str)
+            critical = match.groups()[0] if match else 255
+            match = re.search(temp_re, warn_str)
+            warning = match.groups()[0] if match else 255
+        else:
+            temp_event = False
 
         ## Attributes
         attrs = dict()
@@ -101,31 +133,24 @@ class smartctl(CommandParser):
 
             # Health threshold events
             if threshold > 0 and value <= threshold:
-                result.events.append({
-                    'device': cmd.deviceConfig.device,
-                    'component': prepId(gen_comp_id(component)),
-                    'severity': Event.Error,
-                    'eventKey': name.replace(' ', ''),
-                    'eventClass': '/HW/Store',
-                    'summary': '{0} {1} health below threshold: {2}%'.format(
-                        name,
-                        attr_type,
-                        value,
-                        ),
-                    })
+                attr_severity = Event.Error
+                attr_status = 'below'
             else:
-                result.events.append({
-                    'device': cmd.deviceConfig.device,
-                    'component': prepId(gen_comp_id(component)),
-                    'severity': Event.Clear,
-                    'eventKey': name.replace(' ', ''),
-                    'eventClass': '/HW/Store',
-                    'summary': '{0} {1} health above threshold: {2}%'.format(
-                        name,
-                        attr_type,
-                        value,
-                        ),
-                    })
+                attr_severity = Event.Clear
+                attr_status = 'above'
+            result.events.append({
+                'device': cmd.deviceConfig.device,
+                'component': prepId(gen_comp_id(component)),
+                'severity': attr_severity,
+                'eventKey': name.replace(' ', ''),
+                'eventClass': '/HW/Store',
+                'summary': '{0} {1} health {2} threshold: {3}%'.format(
+                    name,
+                    attr_type,
+                    attr_status,
+                    value,
+                    ),
+                })
 
         ## Device Stats
         stats = dict()
@@ -139,6 +164,17 @@ class smartctl(CommandParser):
         for match in matches:
             value, name = match
             stats[name] = int(value)
+
+        # Temperature threshold if not available in the info dict
+        if 'Current Temperature' in stats and not temp_event:
+            temp_event = True
+            current = stats['Current Temperature']
+            event_key = 'CurrentTemperature'
+            critical = stats.get(
+                'Specified Maximum Operating Temperature',
+                255
+                )
+            warning = 255
 
         ## Phy Events
         phy_events = 0
@@ -154,6 +190,52 @@ class smartctl(CommandParser):
             if name != 'Vendor specific':
                 phy_events += int(value)
 
+        ## Generate Threshold Events
+
+        # NVMe available spare capacity
+        if 'AvailableSpare' in info:
+            nvme_current = info['AvailableSpare']
+            if nvme_current <= info.get('AvailableSpareThreshold', -1):
+                severity = Event.Error
+                status = 'below'
+            else:
+                severity = Event.Clear
+                status = 'above'
+            result.events.append({
+                'device': cmd.deviceConfig.device,
+                'component': prepId(gen_comp_id(component)),
+                'severity': severity,
+                'eventKey': 'NvmeAvailableSpare',
+                'eventClass': '/HW/Store',
+                'summary': 'NVMe available spare {0} threshold: {1}%'.format(
+                    status,
+                    nvme_current
+                    ),
+                })
+
+        # Temperature
+        if temp_event:
+            if current >= critical:
+                severity = Event.Error
+                status = 'above'
+            elif current >= warning:
+                severity = Event.Warning
+                status = 'above'
+            else:
+                severity = Event.Clear
+                status = 'below'
+            result.events.append({
+                'device': cmd.deviceConfig.device,
+                'component': prepId(gen_comp_id(component)),
+                'severity': severity,
+                'eventKey': event_key,
+                'eventClass': '/HW/Store',
+                'summary': 'Temperature {0} threshold: {1} degrees'.format(
+                    status,
+                    current
+                    ),
+                })
+
         ## Assemble datapoint values
 
         values = dict()
@@ -161,6 +243,7 @@ class smartctl(CommandParser):
             'SmartSupport',
             (SMART_ENABLED
              if 'Device supports SMART and is Enabled' in cmd.result.output
+             or 'SMART/Health Information' in cmd.result.output
              else SMART_UNKNOWN)
             )
         values['health_check'] = info.get(
@@ -184,8 +267,8 @@ class smartctl(CommandParser):
         elif 'Number of Reallocated Logical Sectors' in stats:
             value = stats['Number of Reallocated Logical Sectors']
             values['reallocated_sectors'] = value
-        elif 'Elements in grown defect list' in info:
-            value = info['Elements in grown defect list']
+        elif 'ElementsInGrownDefectList' in info:
+            value = info['ElementsInGrownDefectList']
             values['reallocated_sectors'] = value
 
         if 'reallocated_sectors' in values:
@@ -209,17 +292,13 @@ class smartctl(CommandParser):
             values['temperature_celsius'] = attrs['194']['raw']
         elif '190' in attrs:
             values['temperature_celsius'] = attrs['190']['raw']
-        elif 'Current Temperature' in info:
-            values['temperature_celsius'] = info['Current Temperature']
-        elif 'Current Drive Temperature' in info:
-            values['temperature_celsius'] = info['Current Drive Temperature']
-        elif 'Current Temperature' in stats:
-            values['temperature_celsius'] = stats['Current Temperature']
         elif hard_disk and '231' in attrs:
             # Some hard drives may use 231 for Temperature
             values['temperature_celsius'] = attrs['231']['raw']
         elif 'Temperature' in attrs.get('189', {}).get('name', ''):
             values['temperature_celsius'] = attrs['189']['raw']
+        elif temp_event:
+            values['temperature_celsius'] = current
 
         # Normalized values
         health_attrs = {
@@ -245,16 +324,16 @@ class smartctl(CommandParser):
 
         if 'lifetime_health' not in values:
             # Load/Unload Cycle Count
-            if ('Specified load-unload count over device lifetime' in info
-                    and 'Accumulated load-unload cycles' in info):
-                total = info['Specified load-unload count over device lifetime']  # noqa
-                used = info['Accumulated load-unload cycles']
+            if ('SpecifiedLoadUnloadCountOverDeviceLifetime' in info
+                    and 'AccumulatedLoadUnloadCycles' in info):
+                total = info['SpecifiedLoadUnloadCountOverDeviceLifetime']  # noqa
+                used = info['AccumulatedLoadUnloadCycles']
                 values['lifetime_health'] = used / float(total)
             # Power Cycle Count
-            elif ('Specified cycle count over device lifetime' in info
-                    and 'Accumulated start-stop cycles' in info):
-                total = info['Specified cycle count over device lifetime']
-                used = info['Accumulated start-stop cycles']
+            elif ('SpecifiedCycleCountOverDeviceLifetime' in info
+                    and 'AccumulatedStartStopCycles' in info):
+                total = info['SpecifiedCycleCountOverDeviceLifetime']
+                used = info['AccumulatedStartStopCycles']
                 values['lifetime_health'] = used / float(total)
 
         # https://www.hdsentinel.com/ssd_case_health_decrease_wearout.php
@@ -275,8 +354,8 @@ class smartctl(CommandParser):
             if 'Percentage Used Endurance Indicator' in stats:
                 used = stats['Percentage Used Endurance Indicator']
                 values['ssd_health'] = 100 - used
-            elif 'Percentage Used' in info:
-                values['ssd_health'] = 100 - info['Percentage Used']
+            elif 'PercentageUsed' in info:
+                values['ssd_health'] = 100 - info['PercentageUsed']
 
         lowest = 100
         for attr in attrs:
