@@ -6,10 +6,12 @@ ZenPack to model & monitor storage devices' S.M.A.R.T. status
 
 * [smartmontools](https://www.smartmontools.org/)
   * Should work with versions 6.x and 7.x
-  * Limited functionality with 5.x
+  * Potentially limited functionality with 5.x
 * An account on the host, which can
   * Log in via SSH with a key
-  * Run the `smartctl` command with certain parameters without password via `sudo` - This may not be required on some hosts, depending on configuration
+  * Run the `smartctl` command with certain parameters via privilege escalation without password
+    * This may not be required on some hosts, depending on configuration
+    * Currently tries to detect `dzdo`, `doas`, `pfexec`, and `sudo`
 * [ZenPackLib](https://help.zenoss.com/in/zenpack-catalog/open-source/zenpacklib)
 
 Example entries in `/etc/sudoers`
@@ -21,6 +23,8 @@ zenoss ALL=(ALL) NOPASSWD: SMARTCTL
 ## zProperties
 * `zSmartDiskMapMatch`
   * Regex of device names for the modeler to match. If unset, there is no filtering, and all discovered devices (see below) are modeled.
+* `zSmartIgnoreUnsupported`
+  * Skips modeling of devices reported to not support SMART. Defaults to True.
 
 ## Discovery
 On systems other than macOS, SMART-supporting devices are discovered with `smartctl --scan`. Due to the device name format that command returns on macOS, devices are discovered using `diskutil list` instead and results found not to support SMART are ignored. Neither of these commands should require elevated privileges.
@@ -31,6 +35,8 @@ This pack will **not** attempt to enable SMART on any device using `smartctl --s
 Percentages come from the normalized "Value" columns as reported by `smartctl`. Values in excess of 100 are scaled to 0-100.
 
 If a normalized value is at or below a non-zero threshold as reported by `smartctl`, an event is generated. This is not based on thresholds in the performance template.
+
+Some normalized health values may not be available on SCSI/SAS or NVMe devices, based on limitations of `smartctl` output.
 
 ### Health Score Graph
 #### Rated Lifetime
@@ -83,3 +89,4 @@ While this ZenPack tries to be as generic as possible, please keep in mind your 
 
 ## Special Thanks
 * [RageLtMan](https://github.com/sempervictus)
+* [Crosse](https://github.com/Crosse)
