@@ -316,7 +316,6 @@ device_classes:
                 colorindex: 0
 
 
-
 event_classes:
   /Status/SMART:
     remove: true
