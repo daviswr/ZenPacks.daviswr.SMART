@@ -24,13 +24,15 @@ classes:
         label: Model
         grid_display: true
         details_display: false
-        label_width: 200
-        content_width: 200
+        label_width: 185
+        content_width: 185
         order: 11
       SerialNumber:
         label: Serial Number
-        short_label: Serial
-        order: 20
+        grid_display: true
+        label_width: 125
+        content_width: 125
+        order: 12
       FirmwareVersion:
         label: Firmware Version
         short_label: Firmware
