@@ -237,7 +237,10 @@ class SMART(CommandPlugin):
                         '--device',
                         '-d'
                         )
-                    dev_map['id'] = self.prepId(gen_comp_id(dev_map['title']))
+                    dev_map['title'] = dev_map['title'].replace(' -d auto', '')
+                    dev_map['id'] = self.prepId(
+                        gen_comp_id(dev_map['DevicePath'])
+                        )
                     # NVMe form-factor
                     if ('FormFactor' not in dev_map
                             and 'M.2' in dev_map.get('DeviceModel', '')):
