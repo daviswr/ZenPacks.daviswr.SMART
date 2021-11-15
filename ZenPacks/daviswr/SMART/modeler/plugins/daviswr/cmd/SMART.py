@@ -1,7 +1,6 @@
 #pylint: disable=line-too-long,no-init,invalid-name,too-few-public-methods
 """ Models SMART-supporting storage devices via SSH """
 
-from pprint import pformat
 import re
 
 from Products.DataCollector.plugins.CollectorPlugin import CommandPlugin
