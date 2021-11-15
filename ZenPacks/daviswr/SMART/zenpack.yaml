@@ -152,6 +152,8 @@ zProperties:
     category: SMART
   zSmartDiskMapMatch:
     type: string
+  zSmartIgnoreModels:
+    type: string
   zSmartIgnoreUnsupported:
     type: boolean
     default: true

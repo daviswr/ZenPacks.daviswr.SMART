@@ -1,6 +1,7 @@
 #pylint: disable=line-too-long,no-init,invalid-name,too-few-public-methods
 """ Models SMART-supporting storage devices via SSH """
 
+from pprint import pformat
 import re
 
 from Products.DataCollector.plugins.CollectorPlugin import CommandPlugin
@@ -14,6 +15,12 @@ class SMART(CommandPlugin):
 
     relname = 'smartStorage'
     modname = 'ZenPacks.daviswr.SMART.SmartStorage'
+
+    deviceProperties = CommandPlugin.deviceProperties + (
+        'zSmartDiskMapMatch',
+        'zSmartIgnoreModels',
+        'zSmartIgnoreUnsupported',
+        )
 
     # On macOS, a 'smartctl --scan' result looks like
     # IOService:/AppleACPIPlatformExpert/PCI0@0/AppleACPIPCI/SATA@1F,2/
@@ -84,7 +91,17 @@ class SMART(CommandPlugin):
         else:
             log.debug('%s: zSmartDiskMapMatch not set', device.id)
 
-        skip_unsupport = getattr(device, 'zSmartIgnoreUnsupported', '')
+        skip_models_re = getattr(device, 'zSmartIgnoreModels', '')
+        if skip_models_re:
+            log.debug(
+                '%s: zSmartIgnoreModels set to %s',
+                device.id,
+                skip_models_re
+                )
+        else:
+            log.debug('%s: zSmartIgnoreModels not set', device.id)
+
+        skip_unsupport = getattr(device, 'zSmartIgnoreUnsupported', True)
         if skip_unsupport:
             log.debug('%s: zSmartIgnoreUnsupported set', device.id)
         else:
@@ -184,12 +201,30 @@ class SMART(CommandPlugin):
                     dev_map[key] = value
 
             if dev_map.get('DevicePath', None):
+                # Model fixup for SCSI devices
+                if dev_map.get('Vendor', None) and dev_map.get('Product', None):
+                    if not dev_map['Product'].startswith(dev_map['Vendor']):
+                        dev_map['DeviceModel'] = '{0} {1}'.format(
+                            dev_map['Vendor'],
+                            dev_map['Product']
+                            )
+                # Ignore criteria
+                # zSmartDiskMapMatch
                 if match_re and not re.search(match_re, dev_map['DevicePath']):
                     log.info(
                         '%s: %s ignored due to zSmartDiskMapMatch',
                         device.id,
                         dev_map['DevicePath']
                         )
+                # zSmartIgnoreModels
+                elif (re.search(skip_models_re, dev_map.get('DeviceModel', ''))
+                      and skip_models_re):
+                    log.info(
+                        '%s: %s ignored due to zSmartIgnoreModels',
+                        device.id,
+                        dev_map['DevicePath']
+                        )
+                # zSmartIgnoreUnsupported
                 elif (('Unavailable - device lacks SMART capability' in dev
                         or 'Operation not supported by device' in dev)
                         and skip_unsupport):
@@ -204,14 +239,6 @@ class SMART(CommandPlugin):
                         '-d'
                         )
                     dev_map['id'] = self.prepId(gen_comp_id(dev_map['title']))
-                    # Model fixup for SCSI devices
-                    if (dev_map.get('Vendor', None)
-                            and dev_map.get('Product', None)):
-                        if not dev_map['Product'].startswith(dev_map['Vendor']):  # noqa
-                            dev_map['DeviceModel'] = '{0} {1}'.format(
-                                dev_map['Vendor'],
-                                dev_map['Product']
-                                )
                     # NVMe form-factor
                     if ('FormFactor' not in dev_map
                             and 'M.2' in dev_map.get('DeviceModel', '')):
