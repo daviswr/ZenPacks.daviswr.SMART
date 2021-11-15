@@ -242,9 +242,11 @@ class SMART(CommandPlugin):
                         gen_comp_id(dev_map['DevicePath'])
                         )
                     # NVMe form-factor
-                    if ('FormFactor' not in dev_map
-                            and 'M.2' in dev_map.get('DeviceModel', '')):
-                        dev_map['FormFactor'] = 'M.2'
+                    if 'FormFactor' not in dev_map:
+                        for form in ['M.2', 'U.2']:
+                            if form in dev_map.get('DeviceModel', ''):
+                                dev_map['FormFactor'] = form
+                                break
                     om = ObjectMap(modname=self.modname, data=dev_map)
                     model = dev_map.get('DeviceModel', '').replace('_', ' ')
                     if model:
