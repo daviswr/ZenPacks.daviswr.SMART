@@ -247,6 +247,9 @@ class SMART(CommandPlugin):
                             if form in dev_map.get('DeviceModel', ''):
                                 dev_map['FormFactor'] = form
                                 break
+                    # Best guess block size if we failed to get it
+                    if 'LogicalSector' not in dev_map:
+                        dev_map['LogicalSector'] = 512
                     om = ObjectMap(modname=self.modname, data=dev_map)
                     model = dev_map.get('DeviceModel', '').replace('_', ' ')
                     if model:

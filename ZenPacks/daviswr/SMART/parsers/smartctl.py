@@ -312,6 +312,37 @@ class smartctl(CommandParser):
         elif temp_event:
             values['temperature_celsius'] = current
 
+        # I/O Activity
+        # Blocks Read
+        if 'Logical Sectors Read' in stats:
+            values['blocks_read'] = stats['Logical Sectors Read']
+        elif 'DataUnitsRead' in info:
+            values['blocks_read'] = info['DataUnitsRead']
+        elif 'BlocksSentToInitiator' in info:
+            values['blocks_read'] = info['BlocksSentToInitiator']
+        # Blocks Written
+        if 'Logical Sectors Written' in stats:
+            values['blocks_written'] = stats['Logical Sectors Written']
+        elif 'DataUnitsWritten' in info:
+            values['blocks_written'] = info['DataUnitsWritten']
+        elif 'BlocksReceivedFromInitiator' in info:
+            values['blocks_written'] = info['BlocksReceivedFromInitiator']
+        # Operations
+        if ('Number of Read Commands' in stats
+                and 'Number of Write Commands' in stats):
+            reads = stats['Number of Read Commands']
+            writes = stats['Number of Write Commands']
+            values['commands'] = reads + writes
+        elif 'HostReadCommands' in info and 'HostWriteCommands' in info:
+            reads = info['HostReadCommands']
+            writes = info['HostWriteCommands']
+            values['commands'] = reads + writes
+        elif ('NumberOfReadAndWriteCommandsWhoseSize<=SegmentSize' in info
+                and 'NumberOfReadAndWriteCommandsWhoseSize>SegmentSize' in info):  # noqa
+            small = info['NumberOfReadAndWriteCommandsWhoseSize<=SegmentSize']
+            large = info['NumberOfReadAndWriteCommandsWhoseSize>SegmentSize']
+            values['commands'] = small + large
+
         # Normalized values
         health_attrs = {
             '1': 'read_error_health',   # Raw Read Error Rate normalized

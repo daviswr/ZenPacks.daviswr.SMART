@@ -198,6 +198,9 @@ device_classes:
               echo "Component: ${here/title}"
               eval $$info_cmd ${here/DevicePath}
             datapoints:
+              blocks_read: DERIVE_MIN_0
+              blocks_written: DERIVE_MIN_0
+              commands: DERIVE_MIN_0
               health_check: GAUGE
               lifetime_health: GAUGE
               overall_health: GAUGE
@@ -302,6 +305,52 @@ device_classes:
               Pending:
                 dpName: smartctl_pending_sectors
                 colorindex: 2
+          Activity:
+            units: blocks/sec
+            miny: 0
+            graphpoints:
+              DEFAULTS:
+                format: "%5.0lf%s"
+                rpn: "CEIL"
+              Write:
+                dpName: smartctl_blocks_written
+                lineType: AREA
+                stacked: true
+                colorindex: 0
+              Read:
+                dpName: smartctl_blocks_read
+                lineType: LINE
+                lineWidth: 1
+                colorindex: 1
+          Throughput:
+            units: bytes/sec
+            base: true
+            miny: 0
+            graphpoints:
+              DEFAULTS:
+                format: "%5.0lf%s"
+                rpn: "CEIL,${here/LogicalSector},*"
+              Write:
+                dpName: smartctl_blocks_written
+                lineType: AREA
+                stacked: true
+                colorindex: 0
+              Read:
+                dpName: smartctl_blocks_read
+                lineType: LINE
+                lineWidth: 1
+                colorindex: 1
+          Read-Write Commands:
+            units: cmds/sec
+            miny: 0
+            graphpoints:
+              Commands:
+                dpName: smartctl_commands
+                lineType: LINE
+                lineWidth: 2
+                format: "%5.0lf%s"
+                rpn: "CEIL"
+                colorindex: 0
           Temperature:
             units: deg. C
             graphpoints:
@@ -317,6 +366,8 @@ device_classes:
               Events:
                 dpName: smartctl_phy_events
                 lineType: AREA
+                format: "%5.0lf%s"
+                rpn: "CEIL"
                 colorindex: 0
 
 
