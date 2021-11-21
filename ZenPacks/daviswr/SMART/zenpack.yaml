@@ -204,6 +204,7 @@ device_classes:
               blocks_read: DERIVE_MIN_0
               blocks_written: DERIVE_MIN_0
               commands: DERIVE_MIN_0
+              errors: DERIVE_MIN_0
               health_check: GAUGE
               lifetime_health: GAUGE
               overall_health: GAUGE
@@ -308,6 +309,17 @@ device_classes:
               Pending:
                 dpName: smartctl_pending_sectors
                 colorindex: 2
+          Errors:
+            units: errors/sec
+            miny: 0
+            graphpoints:
+              Errors:
+                dpName: smartctl_errors
+                lineType: LINE
+                lineWidth: 2
+                format: "%5.0lf%s"
+                rpn: "CEIL"
+                colorindex: 0
           Activity:
             units: blocks/sec
             miny: 0

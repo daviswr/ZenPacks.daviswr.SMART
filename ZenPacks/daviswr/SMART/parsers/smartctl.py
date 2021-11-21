@@ -343,6 +343,21 @@ class smartctl(CommandParser):
             large = info['NumberOfReadAndWriteCommandsWhoseSize>SegmentSize']
             values['commands'] = small + large
 
+        # Errors
+        values['errors'] = 0
+        stats_keys = [
+            'Number of Reported Uncorrectable Errors',
+            'Number of Interface CRC Errors',
+            ]
+        for key in stats_keys:
+            values['errors'] += stats.get(key, 0)
+        info_keys = [
+            'MediaAndDataIntegrityErrors',
+            'NonMediumErrorCount',
+            ]
+        for key in info_keys:
+            values['errors'] += info.get(key, 0)
+
         # Normalized values
         health_attrs = {
             '1': 'read_error_health',   # Raw Read Error Rate normalized
