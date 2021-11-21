@@ -59,8 +59,7 @@ class smartctl(CommandParser):
 
         # Temperature Threshold
         # SCSI
-        if ('CurrentDriveTemperature' in info
-                and 'DriveTripTemperature' in info):
+        if 'CurrentDriveTemperature' in info:
             temp_event = True
             event_key = 'CurrentDriveTemperature'
             current = info[event_key]
