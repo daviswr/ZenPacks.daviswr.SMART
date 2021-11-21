@@ -37,7 +37,7 @@ class SMART(CommandPlugin):
         if [[ $(uname -s) == Darwin ]];
         then
             scan_cmd="/usr/sbin/diskutil list | grep physical | cut -d' ' -f1";
-            scan_cmd="$scan_cmd | sed 's~\$~ --device auto~g'";
+            scan_cmd="$scan_cmd | sed 's~\$~ -d auto~g'";
         else
             scan_cmd="$smart_path --scan $smart_opts | cut -d'#' -f1";
             scan_cmd="$scan_cmd | sed 's~-d scsi \|ata ~-d auto~g'";
@@ -46,7 +46,7 @@ class SMART(CommandPlugin):
         then
             scan_cmd="$scan_cmd ; ls /dev/nvme* 2>/dev/null";
             scan_cmd="$scan_cmd | grep -e 'nvme[[:digit:]]\$'";
-            scan_cmd="$scan_cmd | sed 's~\$~ --device auto~g'";
+            scan_cmd="$scan_cmd | sed 's~\$~ -d auto~g'";
             scan_cmd="$scan_cmd | sort -u";
         fi;
         health_cmd="$smart_path --health $smart_opts";
