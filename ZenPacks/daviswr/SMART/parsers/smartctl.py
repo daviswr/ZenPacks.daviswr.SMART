@@ -28,6 +28,7 @@ class smartctl(CommandParser):
         ## Colon-delimited values (Info, Health, SCT, etc)
         info = dict()
         for line in cmd.result.output.splitlines():
+            line = line.replace(' = ', ': ')
             if ': ' in line and 'capability' not in line:
                 key_raw, value_raw = line.replace(' is', '').split(':', 1)
                 key = ''
@@ -36,7 +37,8 @@ class smartctl(CommandParser):
                 value = value_raw.strip().replace('%', '')
                 if 'bytes' in value or value[0].isdigit():
                     try:
-                        value = int(value.split(' ')[0].replace(',', ''))
+                        value = value.split(' ')[0].replace(',', '')
+                        value = float(value) if '.' in value else int(value)
                     except ValueError:
                         if 'Min/Max' not in key_raw:
                             continue
