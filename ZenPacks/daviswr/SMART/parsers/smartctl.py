@@ -327,7 +327,7 @@ class smartctl(CommandParser):
             values['blocks_written'] = info['DataUnitsWritten']
         elif 'BlocksReceivedFromInitiator' in info:
             values['blocks_written'] = info['BlocksReceivedFromInitiator']
-        # Operations
+        # R/W Commands
         if ('Number of Read Commands' in stats
                 and 'Number of Write Commands' in stats):
             reads = stats['Number of Read Commands']
