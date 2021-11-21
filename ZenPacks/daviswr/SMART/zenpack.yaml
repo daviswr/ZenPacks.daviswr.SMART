@@ -103,11 +103,13 @@ classes:
         label: Automatic Acoustic Management
         short_label: AAM
         default: Unavailable
+        details_display: false
         order: 29
       ApmFeature:
         label: Advanced Power Management
         short_label: AAM
         default: Unavailable
+        details_display: false
         order: 30
       RdLookAhead:
         label: Read Look-Ahead
@@ -123,6 +125,7 @@ classes:
         label: ATA Security
         short_label: Security
         default: Unavailable
+        details_display: false
         order: 33
       # smartctl --capabilities
       AutoOfflineDataCollection:
