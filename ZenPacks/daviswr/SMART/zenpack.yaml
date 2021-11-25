@@ -98,35 +98,6 @@ classes:
         label_width: 35
         content_width: 35
         order: 13
-      # smartctl --get=all
-      AamFeature:
-        label: Automatic Acoustic Management
-        short_label: AAM
-        default: Unavailable
-        details_display: false
-        order: 29
-      ApmFeature:
-        label: Advanced Power Management
-        short_label: AAM
-        default: Unavailable
-        details_display: false
-        order: 30
-      RdLookAhead:
-        label: Read Look-Ahead
-        default: Unavailable
-        details_display: false
-        order: 31
-      WriteCache:
-        label: Write Cache
-        default: Unavailable
-        details_display: false
-        order: 32
-      AtaSecurity:
-        label: ATA Security
-        short_label: Security
-        default: Unavailable
-        details_display: false
-        order: 33
       # smartctl --capabilities
       AutoOfflineDataCollection:
         label: Auto Offline Data Collection
