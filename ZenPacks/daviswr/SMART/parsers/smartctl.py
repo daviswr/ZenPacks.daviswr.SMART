@@ -15,7 +15,6 @@ from ZenPacks.daviswr.SMART.lib.util import (
     SMART_ENABLED,
     SMART_UNKNOWN,
     attr_override,
-    gen_comp_id,
     )
 
 
@@ -53,7 +52,7 @@ class smartctl(CommandParser):
                              else HEALTH_FAILED)
                 info[key] = value
 
-        component = info.get('Component', '')
+        component = prepId(info.get('SerialNumber', ''))
         hard_disk = (isinstance(info.get('RotationRate', ''), int)
                      or 'disk' == info.get('DeviceType', ''))
 
@@ -141,7 +140,7 @@ class smartctl(CommandParser):
                 attr_status = 'above'
             result.events.append({
                 'device': cmd.deviceConfig.device,
-                'component': prepId(gen_comp_id(component)),
+                'component': component,
                 'severity': attr_severity,
                 'eventKey': name.replace(' ', ''),
                 'eventClass': '/HW/Store',
@@ -215,7 +214,7 @@ class smartctl(CommandParser):
                 status = 'above'
             result.events.append({
                 'device': cmd.deviceConfig.device,
-                'component': prepId(gen_comp_id(component)),
+                'component': component,
                 'severity': severity,
                 'eventKey': 'NvmeAvailableSpare',
                 'eventClass': '/HW/Store',
@@ -238,7 +237,7 @@ class smartctl(CommandParser):
                 status = 'below'
             result.events.append({
                 'device': cmd.deviceConfig.device,
-                'component': prepId(gen_comp_id(component)),
+                'component': component,
                 'severity': severity,
                 'eventKey': event_key,
                 'eventClass': '/HW/Store',

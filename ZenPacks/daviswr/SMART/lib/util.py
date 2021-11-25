@@ -1,3 +1,6 @@
+#pylint: disable=invalid-name
+""" Shared data for modeler & parser """
+
 HEALTH_FAILED = 1
 HEALTH_PASSED = 0
 HEALTH_UNKNOWN = 2
@@ -75,10 +78,3 @@ vendor_dict = {
     'WDC': 'Western Digital',
     'XP': 'Samsung',
     }
-
-
-def gen_comp_id(device_path):
-    """ Generates a component ID from the device path """
-    comp_id = device_path.replace(' --device ', '_').replace(' -d ', '_')
-    comp_id = comp_id.replace('/', '_').replace(',', '')
-    return comp_id
