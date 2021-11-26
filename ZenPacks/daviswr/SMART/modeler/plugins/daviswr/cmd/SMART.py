@@ -256,7 +256,7 @@ class SMART(CommandPlugin):
                 del block[serial]
             else:
                 block_dev = indexed[serial]['DevicePath'].split(' ', 1)[0]
-                indexed[serial]['BlockDevice'] = block_dev
+                indexed[serial]['BlockDevice'] = block_dev.replace('/dev/', '')
             dedupe.append(indexed[serial])
         for serial in block:
             if serial not in indexed:
