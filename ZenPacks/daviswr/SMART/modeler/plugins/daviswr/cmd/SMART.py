@@ -69,6 +69,8 @@ class SMART(CommandPlugin):
             if [[ $permission != *Operation\ not\ supported\ by\ device ]];
             then
                 echo "Device Path: $device";
+                echo "Priv Esc Cmd: $priv_cmd";
+                echo "smartctl Path: $smart_path";
                 eval $info_cmd $device;
                 echo "--------";
             fi;
@@ -163,7 +165,7 @@ class SMART(CommandPlugin):
                         key += term.title()
                     value = value_raw.strip()
                     # Various cleanup
-                    if '.' == value[-1]:
+                    if value and '.' == value[-1]:
                         value = value[0:-1]
                     if 'bytes' in value:
                         try:

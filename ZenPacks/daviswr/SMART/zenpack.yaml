@@ -26,6 +26,13 @@ classes:
         grid_display: true
         label_width: 55
         content_width: 55
+      # sudo, pfexec, etc to use with smartctl
+      PrivEscCmd:
+        default: ""
+        details_display: false
+      SmartctlPath:
+        default: smartctl
+        details_display: false
       # smartctl --info
       DeviceModel:
         label: Model
@@ -158,28 +165,10 @@ device_classes:
             parser: ZenPacks.daviswr.SMART.parsers.smartctl
             commandTemplate: |-
               $$ZENOTHING
-              smart_path=$$(command -v smartctl)
-              if [[ $$smart_path != *smartctl ]]
-              then
-                  smart_path=$$(whereis smartctl | cut -d' ' -f2)
-              fi
               smart_opts="--badsum=ignore --nocheck=standby"
               smart_logs="--log=scttemp --log=devstat --log=ssd --log=sataphy --log=sasphy"
-              info_cmd="$$smart_path --info --health --attributes $$smart_logs $$smart_opts"
-              health_cmd="$$smart_path --health $$smart_opts"
-              permission=$$(eval $$health_cmd ${here/DevicePath} | tail -1)
-              if [[ $$permission == *Permission\ denied ]]
-              then
-                  for priv_cmd in dzdo doas pfexec sudo
-                  do
-                      if [[ -e $$(command -v $$priv_cmd) ]]
-                      then
-                          break
-                      fi
-                  done
-                  info_cmd="$$priv_cmd $$info_cmd"
-              fi
-              eval $$info_cmd ${here/DevicePath}
+              info_cmd="${here/SmartctlPath} --info --health --attributes $$smart_logs $$smart_opts"
+              eval ${here/PrivEscCmd} $$info_cmd ${here/DevicePath}
             datapoints:
               blocks_read: DERIVE_MIN_0
               blocks_written: DERIVE_MIN_0
