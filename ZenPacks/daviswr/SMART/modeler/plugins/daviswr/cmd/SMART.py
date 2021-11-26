@@ -259,7 +259,8 @@ class SMART(CommandPlugin):
                 indexed[serial]['BlockDevice'] = block_dev
             dedupe.append(indexed[serial])
         for serial in block:
-            dedupe.append(block[serial])
+            if serial not in indexed:
+                dedupe.append(block[serial])
 
         for dev_map in dedupe:
             dev_map['title'] = dev_map['DevicePath'].replace('--device', '-d')
