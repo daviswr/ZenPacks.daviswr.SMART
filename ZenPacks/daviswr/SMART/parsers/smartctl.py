@@ -288,8 +288,8 @@ class smartctl(CommandParser):
 
         if '198' in attrs:
             # "raw" is stored as a gauge, just "offline" as derive/counter
-            values['reallocated_offline'] = attrs['5']['raw']
-            values['reallocated_offline_raw'] = attrs['5']['raw']
+            values['reallocated_offline'] = attrs['198']['raw']
+            values['reallocated_offline_raw'] = attrs['198']['raw']
 
         # Pending Sectors
         if '197' in attrs:
