@@ -265,8 +265,12 @@ class SMART(CommandPlugin):
                 dedupe.append(block[serial])
 
         for dev_map in dedupe:
-            dev_map['title'] = dev_map['DevicePath'].replace('--device', '-d')
-            dev_map['title'] = dev_map['title'].replace(' -d auto', '')
+            title = dev_map['DevicePath'].replace('--device', '-d')
+            title = title.replace(' -d auto', '')
+            title = title.replace(' -d cciss', '')
+            if ',' in title:
+                title = title[:-2]
+            dev_map['title'] = title
             dev_map['id'] = self.prepId(dev_map['SerialNumber'])
             # NVMe form-factor
             if 'FormFactor' not in dev_map:
