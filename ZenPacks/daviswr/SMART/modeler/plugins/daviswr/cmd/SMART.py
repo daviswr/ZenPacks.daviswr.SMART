@@ -49,6 +49,7 @@ class SMART(CommandPlugin):
             scan_cmd="$scan_cmd | sed 's~\$~ -d auto~g'";
         fi;
         scan_cmd="$scan_cmd ; cat ~/zenoss_smart.txt 2>/dev/null";
+        scan_cmd="$scan_cmd | grep -v '[\|\&\`\;\<\>\=\|\$\@\.\^\*\?\(\)\+\!]'"
         health_cmd="$smart_path --health $smart_opts";
         for device in $(eval $scan_cmd);
         do
