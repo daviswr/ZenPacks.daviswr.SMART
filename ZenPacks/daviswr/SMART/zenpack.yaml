@@ -412,6 +412,7 @@ event_classes:
               )
           if current > 1:
               evt.summary += 's'
+          evt.dedupid = '{0}|{1}'.format(evt.dedupid, current)
       else:
           evt.summary = '{0} {1}'.format(metric, states.get(current, 'unknown'))
           evt.severity = severity.get(current, Event.Warning)
