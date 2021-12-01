@@ -34,13 +34,13 @@ On systems other than macOS, SMART-supporting devices are discovered with `smart
 This pack will **not** attempt to enable SMART on any device using `smartctl --smart=on` or set any other parameter. Configuration of smartmon is outside the scope of this pack and document.
 
 ### macOS
-Due to the device name format that command returns on macOS, devices are discovered using `diskutil list` instead and results found not to support SMART are ignored.
+Due to the device name format that `smartctl --scan` returns on macOS, devices are discovered using `diskutil list` instead and results found not to support SMART are ignored.
 
 ### Linux
 NVMe devices may not be reported by `smartctl --scan`, so discovery by `ls /dev/nvme*` is also attempted.
 
 ### Manual
-Devices on HP Smart Arrays using the CCISS driver may not be reported by `smartctl --scan`. Those and other non-reporting devices may be added manually to `zenoss_smart.txt` in the home directory of the account used by Zenoss to access the target system. Entries should be one device per line, in the format of `smartctl --scan`.
+Devices on HP Smart Arrays using the CCISS driver may not be reported by `smartctl --scan`. Those and other non-reporting devices may be added manually to `zenoss_smart.txt` in the home directory of the account used by Zenoss to access the target system. Entries should be one device per line, in the format of `smartctl --scan` output.
 
 Example:
 ```
@@ -50,9 +50,9 @@ Example:
 ```
 
 ## Datapoints & Graphs
-Percentages come from the normalized "Value" columns as reported by `smartctl`. Values in excess of 100 are scaled to 0-100.
+Percentages come from the normalized "Value" columns as reported by `smartctl --attributes`. Values in excess of 100 are scaled to 0-100.
 
-If a normalized value is at or below a non-zero threshold as reported by `smartctl`, an event is generated. This is not based on thresholds in the performance template.
+If a normalized value is at or below a non-zero threshold as reported by `smartctl --attributes`, an event is generated. This is not based on thresholds in the performance template.
 
 Some normalized health values may not be available on SCSI/SAS or NVMe devices, based on limitations of `smartctl` output.
 
