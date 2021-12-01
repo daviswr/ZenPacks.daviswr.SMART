@@ -23,13 +23,31 @@ zenoss ALL=(ALL) NOPASSWD: SMARTCTL
 ## zProperties
 * `zSmartDiskMapMatch`
   * Regex of device names for the modeler to match. If unset, there is no filtering, and all discovered devices (see below) are modeled.
+* `zSmartIgnoreModels`
+  * Regex of model names for the modeler to ignore. For SCSI devices with separate Vendor and Product fields, this compared against Vendor and Product joined with a space.
 * `zSmartIgnoreUnsupported`
   * Skips modeling of devices reported to not support SMART. Defaults to True.
 
 ## Discovery
-On systems other than macOS, SMART-supporting devices are discovered with `smartctl --scan`. Due to the device name format that command returns on macOS, devices are discovered using `diskutil list` instead and results found not to support SMART are ignored. Neither of these commands should require elevated privileges.
+On systems other than macOS, SMART-supporting devices are discovered with `smartctl --scan`.
 
 This pack will **not** attempt to enable SMART on any device using `smartctl --smart=on` or set any other parameter. Configuration of smartmon is outside the scope of this pack and document.
+
+### macOS
+Due to the device name format that command returns on macOS, devices are discovered using `diskutil list` instead and results found not to support SMART are ignored.
+
+### Linux
+NVMe devices may not be reported by `smartctl --scan`, so discovery by `ls /dev/nvme*` is also attempted.
+
+### Manual
+Devices on HP Smart Arrays using the CCISS driver may not be reported by `smartctl --scan`. Those and other non-reporting devices may be added manually to `zenoss_smart.txt` in the home directory of the account used by Zenoss to access the target system. Entries should be one device per line, in the format of `smartctl --scan`.
+
+Example:
+```
+/dev/sda -d cciss,1
+/dev/sdb -d cciss,2
+/dev/sdc -d cciss,3
+```
 
 ## Datapoints & Graphs
 Percentages come from the normalized "Value" columns as reported by `smartctl`. Values in excess of 100 are scaled to 0-100.
@@ -76,11 +94,28 @@ Current raw value counts for `Reallocated_Sector_Ct` (5) and `Offline_Uncorrecta
 
 Kingston SSDs may reset the attribute 198 counter at power-on, and consider the attribute to be "Uncorrectable Sector Count".
 
+An event will be generated if either of these values is > 0. Increasing reallocation counts are treated as unique events that will not be deduplicated.
+
 ### Reallocation Rate Graph
-Raw values for `Reallocated_Sector_Ct` (5) and `Offline_Uncorrectable` (198) as rates, with current raw value of `Current_Pending_Sector` (197).
+Raw values for above online and offline reallocation as rates, with current raw value of `Current_Pending_Sector` (197), or `Number of Realloc. Candidate Logical Sectors` from Device Stats.
+
+### Errors Graph
+Total of `Non-medium error count` for SCSI devices, `Media and Data Integrity Errors` for NVMe devices, and `Number of Reported Uncorrectable Errors` & `Number of Interface CRC Errors` from Device Stats, as a rate.
+
+### Activity Graph
+`Blocks sent to initiato` & `Blocks received from initiator` for SCSI devices, `Data Units Read` & `Data Units Written`, or `Logical Sectors Read` & `Logical Sectors Written` from Device Stats, as rates.
+
+### Throughput Graph
+Activity Graph values multiplied by device's logical block size.
+
+### Read/Write Commands Graph
+Sum of `Number of read and write commands whose size <= segment size` & `Number of read and write commands whose size > segment size` for SCSI devices, sum of `Host Read Commands` & `Host Write Commands` for NVMe devices, or sum of `Number of Read Commands` & `Number of Write Commands` from Device Stats, as a rate.
 
 ### Temperature Graph
 Current raw value for `Temperature_Celsius` (194) or `Airflow_Temperature_Cel` (190). `Current Temperature` is taken from SCT Temperature or Device Stats if neither attribute is present. Attribute 231 may be used if device is a hard disk, or 189 if it is idenfitied as Temperature.
+
+### PHY Events Graph
+Total PHY events from SCSI or SATA PHY event logs as a rate.
 
 ## Usage
 I'm not going to make any assumptions about your device class organization, so it's up to you to configure the `daviswr.cmd.SMART` modeler on the appropriate class or device.
