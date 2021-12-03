@@ -289,7 +289,10 @@ class SMART(CommandPlugin):
                     vendor, model = model.split(' ', 1)
                     vendor = vendor_dict.get(vendor, vendor.title())
                 else:
-                    vendor = vendor_dict.get(model[0:2], 'Unknown')
+                    vendor = vendor_dict.get(
+                        model[0:3],
+                        vendor_dict.get(model[0:2], 'Unknown')
+                        )
                 om.setProductKey = MultiArgs(model, vendor)
             rm.append(om)
 
