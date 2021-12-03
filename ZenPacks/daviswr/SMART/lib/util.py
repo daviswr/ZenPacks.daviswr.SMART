@@ -71,9 +71,16 @@ attr_override = {
 # *Not* exhaustive...
 vendor_dict = {
     'CT': 'Crucial',
+    'HU': 'Hitachi',
+    'HUC': 'Hitachi',
+    'KB': 'Kioxia',
+    'KBG': 'Kioxia',
     'MK': 'Mushkin',
+    'MKN': 'Mushkin',
     'SM': 'Samsung',
+    'ST': 'Seagate',
     'TH': 'Toshiba',
+    'THN': 'Toshiba',
     'WD': 'Western Digital',
     'WDC': 'Western Digital',
     'XP': 'Samsung',
