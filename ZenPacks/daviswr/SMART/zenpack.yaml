@@ -79,6 +79,7 @@ classes:
         order: 24
       FormFactor:
         label: Form Factor
+        default: Unknown
         grid_display: true
         label_width: 60
         content_width: 60
