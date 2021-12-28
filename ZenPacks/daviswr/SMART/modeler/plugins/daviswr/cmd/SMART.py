@@ -40,7 +40,7 @@ class SMART(CommandPlugin):
             scan_cmd="$scan_cmd | sed 's~\$~ -d auto~g'";
         else
             scan_cmd="$smart_path --scan $smart_opts | cut -d'#' -f1";
-            scan_cmd="$scan_cmd | sed 's~-d scsi \|ata ~-d auto~g'";
+            scan_cmd="$scan_cmd | sed 's~-d scsi \|ata \|-d sat ~-d auto~g'";
         fi;
         if [[ $(uname -s) == Linux ]];
         then
