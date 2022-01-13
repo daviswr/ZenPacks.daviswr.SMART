@@ -27,6 +27,7 @@ class SMART(CommandPlugin):
     # IOAHCIBlockStorageDevice
     # On Linux, 'smartctl --scan' may not show NVMe devices
     command_raw = r"""$ZENOTHING;
+        PATH=/sbin:/usr/sbin:$PATH;
         IFS=$(echo -en "\n\b");
         smart_path=$(command -v smartctl);
         if [[ $smart_path != *smartctl ]];
