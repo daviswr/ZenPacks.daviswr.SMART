@@ -9,6 +9,7 @@ ZenPack to model & monitor storage devices' S.M.A.R.T. status
   * Potentially limited functionality with 5.x
 * An account on the host, which can
   * Log in via SSH with a key
+  * Use a bash-compatible shell
   * Run the `smartctl` command with certain parameters via privilege escalation without password
     * This may not be required on some hosts, depending on configuration
     * Currently tries to detect `dzdo`, `doas`, `pfexec`, and `sudo`
