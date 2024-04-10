@@ -169,7 +169,7 @@ class SMART(CommandPlugin):
                     # Various cleanup
                     if value and '.' == value[-1]:
                         value = value[0:-1]
-                    if 'bytes' in value:
+                    if 'bytes' in value or 'Capacity' in key_raw:
                         try:
                             value = int(value.split(' ')[0].replace(',', ''))
                         except ValueError:
@@ -270,16 +270,21 @@ class SMART(CommandPlugin):
             title = dev_map['DevicePath'].replace('--device', '-d')
             title = title.replace(' -d auto', '')
             title = title.replace(' -d cciss', '')
+            title = title.replace(' -d nvme', '')
             if ',' in title:
                 title = title[:-2]
             dev_map['title'] = title
             dev_map['id'] = self.prepId(dev_map['SerialNumber'])
             # NVMe form-factor
             if 'FormFactor' not in dev_map:
-                for form in ['M.2', 'U.2']:
+                for form in ['M.2', 'U.2', 'U.3']:
                     if form in dev_map.get('DeviceModel', ''):
                         dev_map['FormFactor'] = form
                         break
+            # NVMe "rotation rate"
+            if ('RotationRate' not in dev_map
+                    and 'nvme' in dev_map['BlockDevice']):
+                dev_map['RotationRate'] = 'Solid State Device'
             # Best guess block size if we failed to get it
             if 'LogicalSector' not in dev_map:
                 dev_map['LogicalSector'] = 512
