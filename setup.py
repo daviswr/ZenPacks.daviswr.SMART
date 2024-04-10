@@ -3,13 +3,13 @@
 # or saved.  Do not modify them directly here.
 # NB: PACKAGES is deprecated
 NAME = "ZenPacks.daviswr.SMART"
-VERSION = "0.1.0-dev"
+VERSION = "0.8.0"
 AUTHOR = "Wes Davis"
 LICENSE = "MIT"
 NAMESPACE_PACKAGES = ['ZenPacks', 'ZenPacks.daviswr']
 PACKAGES = ['ZenPacks', 'ZenPacks.daviswr', 'ZenPacks.daviswr.SMART']
 INSTALL_REQUIRES = ['ZenPacks.zenoss.ZenPackLib']
-COMPAT_ZENOSS_VERS = ""
+COMPAT_ZENOSS_VERS = ">=4.2.5"
 PREV_ZENPACK_NAME = ""
 # STOP_REPLACEMENTS
 ################################
