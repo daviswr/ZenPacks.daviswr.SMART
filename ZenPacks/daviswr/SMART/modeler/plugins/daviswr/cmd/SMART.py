@@ -292,8 +292,16 @@ class SMART(CommandPlugin):
             model = dev_map.get('DeviceModel', '').replace('_', ' ')
             if model:
                 if ' ' in model:
-                    vendor, model = model.split(' ', 1)
-                    vendor = vendor_dict.get(vendor, vendor.title())
+                    vendor, short_model = model.split(' ', 1)
+                    if re.search(r'\d+[GTgt][Bb]', vendor):
+                        vendor = 'Unknown'
+                    elif (vendor.isdigit()
+                            and (short_model.upper().startswith('GB')
+                                 or short_model.upper().startswith('TB'))):
+                        vendor = 'Unknown'
+                    else:
+                        vendor = vendor_dict.get(vendor, vendor.title())
+                        model = short_model
                 else:
                     vendor = vendor_dict.get(
                         model[0:3],
