@@ -24,7 +24,7 @@ class smartctl(CommandParser):
     def processResults(self, cmd, result):
         """ Returns metrics from command output """
 
-        ## Colon-delimited values (Info, Health, SCT, etc)
+        # Colon-delimited values (Info, Health, SCT, etc)
         info = dict()
         for line in cmd.result.output.splitlines():
             line = line.replace(' = ', ': ')
@@ -108,7 +108,7 @@ class smartctl(CommandParser):
             attr_type = attr_type.replace('_', ' ').lower()
             raw = int(raw)  # RegEx should only match the digits
             if value > 100:
-                # Kingston SSDs scale some noramlized values to 120
+                # Kingston SSDs scale some normalized values to 120
                 if value <= 120:
                     scale = 1.2
                 # WD drives scale some normalized values to 200
@@ -316,14 +316,16 @@ class smartctl(CommandParser):
         if 'Logical Sectors Read' in stats:
             values['blocks_read'] = stats['Logical Sectors Read']
         elif 'DataUnitsRead' in info:
-            values['blocks_read'] = info['DataUnitsRead']
+            # https://www.percona.com/blog/using-nvme-command-line-tools-to-check-nvme-flash-health/  # noqa
+            # "The first value corresponds to 1000 of the 512-byte units"
+            values['blocks_read'] = info['DataUnitsRead'] * 1000
         elif 'BlocksSentToInitiator' in info:
             values['blocks_read'] = info['BlocksSentToInitiator']
         # Blocks Written
         if 'Logical Sectors Written' in stats:
             values['blocks_written'] = stats['Logical Sectors Written']
         elif 'DataUnitsWritten' in info:
-            values['blocks_written'] = info['DataUnitsWritten']
+            values['blocks_written'] = info['DataUnitsWritten'] * 1000
         elif 'BlocksReceivedFromInitiator' in info:
             values['blocks_written'] = info['BlocksReceivedFromInitiator']
         # R/W Commands
