@@ -316,8 +316,9 @@ class smartctl(CommandParser):
         if 'Logical Sectors Read' in stats:
             values['blocks_read'] = stats['Logical Sectors Read']
         elif 'DataUnitsRead' in info:
-            # https://www.percona.com/blog/using-nvme-command-line-tools-to-check-nvme-flash-health/  # noqa
-            # "The first value corresponds to 1000 of the 512-byte units"
+            # https://media.kingston.com/support/downloads/MKP_521.6_SMART-DCP1000_attribute.pdf  # noqa
+            # "This value is reported in thousands (i.e., a value of 1
+            # corresponds to 1000 units of 512 bytes read) and is rounded up."
             values['blocks_read'] = info['DataUnitsRead'] * 1000
         elif 'BlocksSentToInitiator' in info:
             values['blocks_read'] = info['BlocksSentToInitiator']
